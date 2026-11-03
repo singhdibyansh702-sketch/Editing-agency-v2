@@ -290,13 +290,13 @@ const App = {
             Quick 1-Tap Demo Logins
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('admin@videoagency.com','AdminPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+            <button type="button" id="demo-btn-admin" class="btn btn-sm btn-outline" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
               👑 Admin
             </button>
-            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('editor1@videoagency.com','EditorPass123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+            <button type="button" id="demo-btn-editor" class="btn btn-sm btn-outline" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
               ✂️ Editor
             </button>
-            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('client1@techflow.io','ClientPass123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+            <button type="button" id="demo-btn-client" class="btn btn-sm btn-outline" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
               💼 Client
             </button>
           </div>
@@ -306,6 +306,41 @@ const App = {
         </div>
       </div>
     `;
+
+    // Direct DOM event bindings (bypasses any browser attribute policy)
+    const submitBtn = document.getElementById('login-submit-btn');
+    if (submitBtn) {
+      submitBtn.onclick = (e) => App.handleLoginForm(e);
+      submitBtn.addEventListener('click', (e) => App.handleLoginForm(e));
+    }
+
+    const emailInp = document.getElementById('login-email');
+    const passInp = document.getElementById('login-password');
+    [emailInp, passInp].forEach(inp => {
+      if (inp) {
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') App.handleLoginForm(e);
+        });
+      }
+    });
+
+    const adminBtn = document.getElementById('demo-btn-admin');
+    if (adminBtn) {
+      adminBtn.onclick = () => App.quickLogin('admin@videoagency.com', 'AdminPassword123!');
+      adminBtn.addEventListener('click', () => App.quickLogin('admin@videoagency.com', 'AdminPassword123!'));
+    }
+
+    const editorBtn = document.getElementById('demo-btn-editor');
+    if (editorBtn) {
+      editorBtn.onclick = () => App.quickLogin('editor1@videoagency.com', 'EditorPass123!');
+      editorBtn.addEventListener('click', () => App.quickLogin('editor1@videoagency.com', 'EditorPass123!'));
+    }
+
+    const clientBtn = document.getElementById('demo-btn-client');
+    if (clientBtn) {
+      clientBtn.onclick = () => App.quickLogin('client1@techflow.io', 'ClientPass123!');
+      clientBtn.addEventListener('click', () => App.quickLogin('client1@techflow.io', 'ClientPass123!'));
+    }
 
     if (window.lucide) window.lucide.createIcons();
   },

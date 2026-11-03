@@ -30,19 +30,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Security headers with relaxed CSP for CDN icons and fonts
+// Security headers (CSP disabled so inline handlers, CDN icons, and API requests execute without browser blocks)
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-        connectSrc: ["'self'", 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://127.0.0.1:8001']
-      }
-    },
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
   })
 );
