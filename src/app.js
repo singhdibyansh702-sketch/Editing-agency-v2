@@ -22,6 +22,14 @@ const app = express();
 // Enable trust proxy for Render / Cloudflare / reverse proxies (Critical for cookies & rate limiting)
 app.set('trust proxy', 1);
 
+// Prevent aggressive caching of HTML and SPA scripts during releases
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Security headers with relaxed CSP for CDN icons and fonts
 app.use(
   helmet({

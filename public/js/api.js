@@ -2,12 +2,30 @@
  * Unified API Client
  */
 
+let inMemoryToken = null;
+
 const API = {
   baseUrl: '/api',
 
+  getToken() {
+    try {
+      return localStorage.getItem('agency_token') || inMemoryToken;
+    } catch {
+      return inMemoryToken;
+    }
+  },
+
+  setToken(token) {
+    inMemoryToken = token;
+    try {
+      if (token) localStorage.setItem('agency_token', token);
+      else localStorage.removeItem('agency_token');
+    } catch {}
+  },
+
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
-    const token = localStorage.getItem('agency_token');
+    const token = this.getToken();
     const defaultHeaders = {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -39,7 +57,7 @@ const API = {
         }
 
         if (response.status === 401 && !endpoint.includes('/auth/login')) {
-          localStorage.removeItem('agency_token');
+          this.setToken(null);
           Toast.error('Session expired. Please sign in again.');
           window.location.hash = '#login';
         } else if (response.status === 403) {

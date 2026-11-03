@@ -67,7 +67,7 @@ const App = {
       console.error(err);
     } finally {
       State.currentUser = null;
-      localStorage.removeItem('agency_token');
+      API.setToken(null);
       document.body.classList.add('login-mode');
       Toast.info('Signed out.');
       this.renderLoginScreen();
@@ -189,6 +189,10 @@ const App = {
     } else if (hash === 'audit' && role === 'ADMIN') {
       AdminPortal.renderAuditLogs(mainContainer);
     } else if (hash === 'login') {
+      if (State.currentUser) {
+        window.location.hash = '#overview';
+        return;
+      }
       this.renderLoginScreen();
     } else {
       window.location.hash = '#overview';
@@ -267,19 +271,19 @@ const App = {
           <p style="font-size:0.875rem;color:var(--text-muted);margin-top:4px">Sign in to your agency portal</p>
         </div>
 
-        <form id="agency-login-form" onsubmit="event.preventDefault(); App.handleLoginForm(event);">
+        <div class="login-form-box">
           <div class="form-group" style="margin-bottom:16px">
             <label class="form-label" style="display:block;margin-bottom:6px;font-weight:600;font-size:0.85rem">Email Address</label>
-            <input type="email" id="login-email" class="form-control" placeholder="admin@videoagency.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
+            <input type="email" id="login-email" class="form-control" placeholder="admin@videoagency.com" autocapitalize="none" autocorrect="off" autocomplete="email" onkeydown="if(event.key==='Enter') App.handleLoginForm(event);" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
           </div>
           <div class="form-group" style="margin-bottom:20px">
             <label class="form-label" style="display:block;margin-bottom:6px;font-weight:600;font-size:0.85rem">Password</label>
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') App.handleLoginForm(event);" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
           </div>
-          <button type="submit" id="login-submit-btn" class="btn btn-primary" style="width:100%;height:46px;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">
+          <button type="button" id="login-submit-btn" class="btn btn-primary" onclick="App.handleLoginForm(event)" style="width:100%;height:46px;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">
             Sign In
           </button>
-        </form>
+        </div>
 
         <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border-color)">
           <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;text-align:center">
@@ -289,10 +293,10 @@ const App = {
             <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('admin@videoagency.com','AdminPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
               👑 Admin
             </button>
-            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('editor1@videoagency.com','EditorPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('editor1@videoagency.com','EditorPass123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
               ✂️ Editor
             </button>
-            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('client1@techflow.io','ClientPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('client1@techflow.io','ClientPass123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
               💼 Client
             </button>
           </div>
@@ -315,7 +319,10 @@ const App = {
   },
 
   async handleLoginForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
     const email = document.getElementById('login-email')?.value?.trim().toLowerCase();
     const password = document.getElementById('login-password')?.value;
 
@@ -333,17 +340,22 @@ const App = {
     try {
       const res = await API.post('/auth/login', { email, password });
       if (res.token) {
-        localStorage.setItem('agency_token', res.token);
+        API.setToken(res.token);
       }
       State.currentUser = res.user;
       document.body.classList.remove('login-mode');
       Toast.success(`Welcome back, ${res.user.name}!`);
       this.renderSidebar();
       this.renderTopbarUser();
-      window.location.hash = '#overview';
-      this.handleRouting();
+      
+      if (window.location.hash === '#overview') {
+        this.handleRouting();
+      } else {
+        window.location.hash = '#overview';
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Login error:', err);
+      Toast.error(err.message || 'Login failed. Please check credentials.');
     } finally {
       if (btn) {
         btn.disabled = false;

@@ -6,13 +6,13 @@ async function authenticate(req, res, next) {
   try {
     let token = null;
 
-    // 1. Check HTTP-only cookie
-    if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
-    }
-    // 2. Check Authorization header
-    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    // 1. Prioritize explicit Authorization header from client
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
+    }
+    // 2. Fall back to HTTP-only cookie
+    else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
     }
 
     if (!token) {
