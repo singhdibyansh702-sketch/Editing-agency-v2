@@ -19,6 +19,9 @@ const videoRoutes = require('./routes/videoRoutes');
 
 const app = express();
 
+// Enable trust proxy for Render / Cloudflare / reverse proxies (Critical for cookies & rate limiting)
+app.set('trust proxy', 1);
+
 // Security headers with relaxed CSP for CDN icons and fonts
 app.use(
   helmet({

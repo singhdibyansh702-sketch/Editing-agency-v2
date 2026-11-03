@@ -62,6 +62,7 @@ const App = {
     try {
       await API.post('/auth/logout');
       State.currentUser = null;
+      localStorage.removeItem('agency_token');
       Toast.info('Signed out.');
       this.renderLoginScreen();
     } catch (err) {
@@ -264,7 +265,7 @@ const App = {
         <form onsubmit="event.preventDefault(); App.handleLoginForm();">
           <div class="form-group">
             <label class="form-label">Email Address</label>
-            <input type="email" id="login-email" class="form-control" placeholder="name@agency.com" required>
+            <input type="email" id="login-email" class="form-control" placeholder="name@agency.com" autocapitalize="none" autocorrect="off" autocomplete="email" required>
           </div>
           <div class="form-group">
             <label class="form-label">Password</label>
@@ -281,11 +282,14 @@ const App = {
   },
 
   async handleLoginForm() {
-    const email = document.getElementById('login-email')?.value;
+    const email = document.getElementById('login-email')?.value?.trim().toLowerCase();
     const password = document.getElementById('login-password')?.value;
 
     try {
       const res = await API.post('/auth/login', { email, password });
+      if (res.token) {
+        localStorage.setItem('agency_token', res.token);
+      }
       State.currentUser = res.user;
       Toast.success(`Welcome back, ${res.user.name}!`);
       this.renderSidebar();

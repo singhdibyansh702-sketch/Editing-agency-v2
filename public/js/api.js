@@ -7,8 +7,10 @@ const API = {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
+    const token = localStorage.getItem('agency_token');
     const defaultHeaders = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 
     const config = {
@@ -31,6 +33,7 @@ const API = {
       if (!response.ok) {
         const errorMsg = data.message || `Request failed (${response.status})`;
         if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/me')) {
+          localStorage.removeItem('agency_token');
           Toast.error('Session expired. Please sign in again.');
           window.location.hash = '#login';
         } else if (response.status === 403) {
