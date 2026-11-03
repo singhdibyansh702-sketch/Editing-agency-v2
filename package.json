@@ -4,6 +4,7 @@
   "description": "Full-Stack High-End Video Editing Agency Management System",
   "main": "server.js",
   "scripts": {
+    "build": "npm rebuild sqlite3 --build-from-source || true",
     "start": "node server.js",
     "dev": "node server.js",
     "seed": "node -e \"require('./src/db/seed').seedDatabase(true)\"",
@@ -32,6 +33,7 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.24.6",
+    "sql.js": "^1.15.2",
     "sqlite3": "^6.0.1"
   }
 }

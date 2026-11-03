@@ -1,15 +1,29 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-const sqlite3 = require('sqlite3').verbose();
 const config = require('../config');
+
+// Safe loader for native sqlite3 (which can fail on different GLIBC linux versions)
+let sqlite3 = null;
+try {
+  sqlite3 = require('sqlite3').verbose();
+} catch (e) {
+  console.warn(`[DB] Native sqlite3 addon unavailable (${e.message}). Will use pure WebAssembly sql.js fallback.`);
+}
+
+let initSqlJs = null;
+try {
+  initSqlJs = require('sql.js');
+} catch (e) {
+  // sql.js not installed
+}
 
 let activeDbType = 'mysql';
 let mysqlPool = null;
 let sqliteDb = null;
 
-// Promisified SQLite wrapper to match mysql2/promise interface
-class SQLiteAdapter {
+// Native SQLite3 Wrapper
+class NativeSQLiteAdapter {
   constructor(dbPath) {
     this.db = new sqlite3.Database(dbPath);
   }
@@ -42,13 +56,80 @@ class SQLiteAdapter {
   }
 }
 
+// Pure WebAssembly SQLite Wrapper (Immune to Linux GLIBC issues)
+class WasmSQLiteAdapter {
+  constructor(dbPath, SQL) {
+    this.dbPath = dbPath;
+    if (fs.existsSync(dbPath)) {
+      try {
+        const fileBuffer = fs.readFileSync(dbPath);
+        this.db = new SQL.Database(fileBuffer);
+      } catch {
+        this.db = new SQL.Database();
+      }
+    } else {
+      this.db = new SQL.Database();
+    }
+  }
+
+  save() {
+    try {
+      const data = this.db.export();
+      fs.writeFileSync(this.dbPath, Buffer.from(data));
+    } catch (e) {
+      console.warn('[DB] Disk persistence warning:', e.message);
+    }
+  }
+
+  run(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      try {
+        this.db.run(sql, params);
+        this.save();
+        const changes = this.db.getRowsModified();
+        resolve({ affectedRows: changes, insertId: 0 });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  all(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      try {
+        const stmt = this.db.prepare(sql);
+        stmt.bind(params);
+        const rows = [];
+        while (stmt.step()) {
+          rows.push(stmt.getAsObject());
+        }
+        stmt.free();
+        resolve(rows);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  exec(sql) {
+    return new Promise((resolve, reject) => {
+      try {
+        this.db.exec(sql);
+        this.save();
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+}
+
 async function initDatabase() {
   // 1. Try MySQL connection first if configured
   if (config.db.type === 'mysql') {
     try {
       console.log(`[DB] Attempting connection to MySQL at ${config.db.host}:${config.db.port}...`);
       
-      // Attempt to create database if not exists using a root connection
       try {
         const rootConn = await mysql.createConnection({
           host: config.db.host,
@@ -94,7 +175,7 @@ async function initDatabase() {
             try {
               await mysqlPool.query(statement);
             } catch (stmtErr) {
-              // Ignore table already exists or duplicate key errors during startup
+              // Ignore duplicate errors during startup
             }
           }
         }
@@ -105,15 +186,36 @@ async function initDatabase() {
     }
   }
 
-  // 2. Embedded SQLite Fallback with identical tables & relational integrity
+  // 2. Embedded Relational SQLite
   activeDbType = 'sqlite';
   const dbDir = path.resolve(__dirname, '../../data');
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
   const dbFilePath = path.join(dbDir, 'agency.sqlite');
-  sqliteDb = new SQLiteAdapter(dbFilePath);
-  
+
+  // Attempt native sqlite3 if binary loaded without GLIBC error
+  if (sqlite3) {
+    try {
+      sqliteDb = new NativeSQLiteAdapter(dbFilePath);
+      console.log(`[DB] Embedded Relational SQLite (native driver) active at: ${dbFilePath}`);
+    } catch (err) {
+      console.warn(`[DB] Native SQLite adapter init failed (${err.message}). Falling back to WebAssembly SQLite.`);
+      sqliteDb = null;
+    }
+  }
+
+  // If native sqlite3 failed or is absent, use WebAssembly sql.js
+  if (!sqliteDb && initSqlJs) {
+    const SQL = await initSqlJs();
+    sqliteDb = new WasmSQLiteAdapter(dbFilePath, SQL);
+    console.log(`[DB] Embedded Relational SQLite (WebAssembly engine) active at: ${dbFilePath}`);
+  }
+
+  if (!sqliteDb) {
+    throw new Error('No database driver could be initialized.');
+  }
+
   // Enable foreign keys
   await sqliteDb.run('PRAGMA foreign_keys = ON;');
   
@@ -123,19 +225,16 @@ async function initDatabase() {
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
     await sqliteDb.exec(schemaSql);
   }
-  console.log(`[DB] Embedded Relational SQLite database active at: ${dbFilePath}`);
 }
 
 /**
  * Universal Query Method
- * Matches mysql2/promise: returns [rows, fields]
  */
 async function query(sql, params = []) {
   if (activeDbType === 'mysql' && mysqlPool) {
     return await mysqlPool.query(sql, params);
   }
 
-  // SQLite execution
   const trimmed = sql.trim().toUpperCase();
   if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA')) {
     const rows = await sqliteDb.all(sql, params);
@@ -146,9 +245,6 @@ async function query(sql, params = []) {
   }
 }
 
-/**
- * Universal Execute Method
- */
 async function execute(sql, params = []) {
   return await query(sql, params);
 }
@@ -163,4 +259,3 @@ module.exports = {
   execute,
   getDbType
 };
-
