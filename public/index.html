@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineFlow Studio - High-End Video Editing Agency Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">
+          <i data-lucide="video" style="width:20px;height:20px"></i>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">CineFlow Studio</span>
+          <span class="brand-sub">Agency Management</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebar-nav-el"></nav>
+
+      <div class="sidebar-footer">
+        <div class="user-mini-card" id="sidebar-user-card"></div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle" onclick="App.toggleMobileSidebar()">
+            <i data-lucide="menu"></i>
+          </button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-progress" style="font-weight:700">v2.0 PRODUCTION</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Notification Bell -->
+          <button class="top-action-btn" title="Notifications" onclick="App.openNotificationsDropdown()">
+            <i data-lucide="bell" style="width:18px;height:18px"></i>
+            <span class="notification-badge" id="notification-bell-badge" style="display:none"></span>
+          </button>
+
+          <!-- Theme Toggle -->
+          <button class="top-action-btn" title="Toggle Light / Dark Mode" onclick="App.toggleTheme()">
+            <i data-lucide="sun" id="theme-icon" style="width:18px;height:18px"></i>
+          </button>
+
+          <!-- Active User Badge & Logout -->
+          <div id="topbar-user-badge" style="display:flex;align-items:center;gap:8px;padding-left:6px"></div>
+
+          <button class="top-action-btn" title="Sign Out" onclick="App.logout()">
+            <i data-lucide="log-out" style="width:18px;height:18px"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Content View Body -->
+      <main class="content-body">
+        <div class="container-xl" id="main-content-view">
+          <!-- Views dynamically rendered by router -->
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Component Scripts -->
+  <script src="/js/components/toast.js"></script>
+  <script src="/js/components/modal.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/state.js"></script>
+
+  <!-- Portals -->
+  <script src="/js/portals/adminPortal.js"></script>
+  <script src="/js/portals/editorPortal.js"></script>
+  <script src="/js/portals/clientPortal.js"></script>
+  <script src="/js/portals/chatView.js"></script>
+  <script src="/js/portals/videoInspectorView.js"></script>
+
+  <!-- Main App Controller -->
+  <script src="/js/app.js"></script>
+</body>
+</html>
+

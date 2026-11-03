@@ -1,0 +1,37 @@
+{
+  "name": "editing-agency-management-v2",
+  "version": "2.0.0",
+  "description": "Full-Stack High-End Video Editing Agency Management System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node -e \"require('./src/db/seed').seedDatabase(true)\"",
+    "video-service": "python video_service.py"
+  },
+  "keywords": [
+    "video-agency",
+    "management-system",
+    "video-editing",
+    "multi-currency",
+    "privacy-boundaries",
+    "mysql",
+    "express",
+    "fastapi"
+  ],
+  "author": "CineFlow Team",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.6",
+    "sqlite3": "^6.0.1"
+  }
+}
