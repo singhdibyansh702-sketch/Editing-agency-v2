@@ -49,11 +49,13 @@ const App = {
     try {
       const res = await API.get('/auth/me');
       State.currentUser = res.user;
+      document.body.classList.remove('login-mode');
       this.renderSidebar();
       this.renderTopbarUser();
       this.pollNotifications();
     } catch {
       State.currentUser = null;
+      document.body.classList.add('login-mode');
       this.renderLoginScreen();
     }
   },
@@ -61,12 +63,14 @@ const App = {
   async logout() {
     try {
       await API.post('/auth/logout');
-      State.currentUser = null;
-      localStorage.removeItem('agency_token');
-      Toast.info('Signed out.');
-      this.renderLoginScreen();
     } catch (err) {
       console.error(err);
+    } finally {
+      State.currentUser = null;
+      localStorage.removeItem('agency_token');
+      document.body.classList.add('login-mode');
+      Toast.info('Signed out.');
+      this.renderLoginScreen();
     }
   },
 
@@ -249,41 +253,82 @@ const App = {
   },
 
   renderLoginScreen() {
+    document.body.classList.add('login-mode');
     const mainContainer = document.getElementById('main-content-view');
     if (!mainContainer) return;
 
     mainContainer.innerHTML = `
-      <div style="max-width:440px;margin:60px auto;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-xl);padding:32px;box-shadow:var(--shadow-xl)">
+      <div class="login-card-container">
         <div style="text-align:center;margin-bottom:24px">
-          <div class="logo-badge" style="margin:0 auto 12px;width:48px;height:48px">
-            <i data-lucide="video" style="width:24px;height:24px"></i>
+          <div class="logo-badge" style="margin:0 auto 12px;width:52px;height:52px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));display:flex;align-items:center;justify-content:center;border-radius:14px;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,0.3)">
+            <i data-lucide="video" style="width:26px;height:26px"></i>
           </div>
-          <h2 style="font-size:1.4rem;font-weight:800">CineFlow Management</h2>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">Sign in to your agency portal</p>
+          <h2 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">CineFlow Studio</h2>
+          <p style="font-size:0.875rem;color:var(--text-muted);margin-top:4px">Sign in to your agency portal</p>
         </div>
 
-        <form onsubmit="event.preventDefault(); App.handleLoginForm();">
-          <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <input type="email" id="login-email" class="form-control" placeholder="name@agency.com" autocapitalize="none" autocorrect="off" autocomplete="email" required>
+        <form id="agency-login-form" onsubmit="event.preventDefault(); App.handleLoginForm(event);">
+          <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label" style="display:block;margin-bottom:6px;font-weight:600;font-size:0.85rem">Email Address</label>
+            <input type="email" id="login-email" class="form-control" placeholder="admin@videoagency.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
           </div>
-          <div class="form-group">
-            <label class="form-label">Password</label>
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+          <div class="form-group" style="margin-bottom:20px">
+            <label class="form-label" style="display:block;margin-bottom:6px;font-weight:600;font-size:0.85rem">Password</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:10px">
+          <button type="submit" id="login-submit-btn" class="btn btn-primary" style="width:100%;height:46px;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">
             Sign In
           </button>
         </form>
+
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border-color)">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;text-align:center">
+            Quick 1-Tap Demo Logins
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('admin@videoagency.com','AdminPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+              👑 Admin
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('editor1@videoagency.com','EditorPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+              ✂️ Editor
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="App.quickLogin('client1@techflow.io','ClientPassword123!')" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
+              💼 Client
+            </button>
+          </div>
+          <div style="margin-top:14px;font-size:0.75rem;color:var(--text-muted);text-align:center;line-height:1.5">
+            Admin: <code style="color:var(--accent-primary)">admin@videoagency.com</code> / <code style="color:var(--accent-primary)">AdminPassword123!</code>
+          </div>
+        </div>
       </div>
     `;
 
     if (window.lucide) window.lucide.createIcons();
   },
 
-  async handleLoginForm() {
+  async quickLogin(email, password) {
+    const emailEl = document.getElementById('login-email');
+    const passEl = document.getElementById('login-password');
+    if (emailEl) emailEl.value = email;
+    if (passEl) passEl.value = password;
+    await this.handleLoginForm();
+  },
+
+  async handleLoginForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
     const email = document.getElementById('login-email')?.value?.trim().toLowerCase();
     const password = document.getElementById('login-password')?.value;
+
+    if (!email || !password) {
+      Toast.error('Please enter both email and password.');
+      return;
+    }
+
+    const btn = document.getElementById('login-submit-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Signing In...';
+    }
 
     try {
       const res = await API.post('/auth/login', { email, password });
@@ -291,12 +336,19 @@ const App = {
         localStorage.setItem('agency_token', res.token);
       }
       State.currentUser = res.user;
+      document.body.classList.remove('login-mode');
       Toast.success(`Welcome back, ${res.user.name}!`);
       this.renderSidebar();
       this.renderTopbarUser();
       window.location.hash = '#overview';
+      this.handleRouting();
     } catch (err) {
       console.error(err);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Sign In';
+      }
     }
   },
 

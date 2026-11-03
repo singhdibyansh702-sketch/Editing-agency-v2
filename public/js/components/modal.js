@@ -13,6 +13,7 @@ const Modal = {
       this.backdrop = document.createElement('div');
       this.backdrop.id = 'global-modal-backdrop';
       this.backdrop.className = 'modal-backdrop';
+      this.backdrop.style.display = 'none';
       this.backdrop.innerHTML = `
         <div class="modal-dialog" id="global-modal-dialog">
           <div class="modal-header">
@@ -63,6 +64,7 @@ const Modal = {
       this.dialog.className = 'modal-dialog';
     }
 
+    this.backdrop.style.display = 'flex';
     this.backdrop.classList.add('open');
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -77,6 +79,7 @@ const Modal = {
   close() {
     if (this.backdrop) {
       this.backdrop.classList.remove('open');
+      this.backdrop.style.display = 'none';
     }
   }
 };

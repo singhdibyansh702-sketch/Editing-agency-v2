@@ -32,7 +32,13 @@ const API = {
 
       if (!response.ok) {
         const errorMsg = data.message || `Request failed (${response.status})`;
-        if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/me')) {
+        
+        // Background session checks or silent requests must never pop up error toasts
+        if (options.silent || endpoint.includes('/auth/me')) {
+          throw new Error(errorMsg);
+        }
+
+        if (response.status === 401 && !endpoint.includes('/auth/login')) {
           localStorage.removeItem('agency_token');
           Toast.error('Session expired. Please sign in again.');
           window.location.hash = '#login';
