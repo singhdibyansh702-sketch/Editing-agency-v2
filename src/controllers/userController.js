@@ -156,10 +156,10 @@ async function updateClient(req, res, next) {
       );
     }
 
-    // Update profile
+    // Update profile with COALESCE to support partial updates
     await db.query(
-      'UPDATE client_profiles SET phone = ?, company_name = ?, notes = ? WHERE user_id = ?',
-      [phone, company_name, notes, id]
+      'UPDATE client_profiles SET phone = COALESCE(?, phone), company_name = COALESCE(?, company_name), notes = COALESCE(?, notes) WHERE user_id = ?',
+      [phone !== undefined ? phone : null, company_name !== undefined ? company_name : null, notes !== undefined ? notes : null, id]
     );
 
     await db.query(
@@ -331,9 +331,18 @@ async function updateEditor(req, res, next) {
       );
     }
 
+    // Update profile with COALESCE to support partial updates
     await db.query(
-      'UPDATE editor_profiles SET phone = ?, skills = ?, experience = ?, portfolio_link = ?, payment_rate = ?, internal_notes = ? WHERE user_id = ?',
-      [phone, skills, experience, portfolio_link, parseFloat(payment_rate) || 0.0, internal_notes, id]
+      'UPDATE editor_profiles SET phone = COALESCE(?, phone), skills = COALESCE(?, skills), experience = COALESCE(?, experience), portfolio_link = COALESCE(?, portfolio_link), payment_rate = COALESCE(?, payment_rate), internal_notes = COALESCE(?, internal_notes) WHERE user_id = ?',
+      [
+        phone !== undefined ? phone : null,
+        skills !== undefined ? skills : null,
+        experience !== undefined ? experience : null,
+        portfolio_link !== undefined ? portfolio_link : null,
+        payment_rate !== undefined ? (parseFloat(payment_rate) || 0.0) : null,
+        internal_notes !== undefined ? internal_notes : null,
+        id
+      ]
     );
 
     await db.query(
