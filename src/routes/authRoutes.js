@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 
 router.post('/login', authLimiter, authController.login);
+router.post('/register', authLimiter, authController.register);
 router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.getMe);
 

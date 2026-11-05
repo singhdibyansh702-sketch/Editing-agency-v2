@@ -183,10 +183,163 @@ async function switchUserDemo(req, res, next) {
   }
 }
 
+// Self-Registration for Clients and Editors
+async function register(req, res, next) {
+  try {
+    const { role, name, email, password, phone, company_name, portfolio_link, skills } = req.body;
+
+    if (!role || !name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, password, and account role are required.'
+      });
+    }
+
+    const cleanRole = role.toUpperCase().trim();
+    if (!['CLIENT', 'EDITOR'].includes(cleanRole)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only Client and Editor accounts can register.'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long.'
+      });
+    }
+
+    if (cleanRole === 'CLIENT') {
+      if (!company_name || !company_name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Company or Channel name is required for client registration.'
+        });
+      }
+      if (!phone || !phone.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone / WhatsApp number is required for client registration.'
+        });
+      }
+    } else if (cleanRole === 'EDITOR') {
+      if (!phone || !phone.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone / WhatsApp number is required for editor registration.'
+        });
+      }
+      if (!skills || !skills.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Primary software / tools are required for editor registration.'
+        });
+      }
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check if email already registered
+    const [existing] = await db.query('SELECT id FROM users WHERE email = ? LIMIT 1', [cleanEmail]);
+    if (existing && existing.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'An account with this email address already exists. Please sign in.'
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userId = `${cleanRole === 'CLIENT' ? 'u-client' : 'u-editor'}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+    const profileId = `${cleanRole === 'CLIENT' ? 'cp' : 'ep'}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+
+    // Insert user
+    await db.query(
+      'INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, cleanEmail, passwordHash, name.trim(), cleanRole, 'ACTIVE']
+    );
+
+    let profile = null;
+    if (cleanRole === 'CLIENT') {
+      await db.query(
+        'INSERT INTO client_profiles (id, user_id, phone, company_name, notes) VALUES (?, ?, ?, ?, ?)',
+        [profileId, userId, phone ? phone.trim() : null, company_name ? company_name.trim() : null, 'Self-registered client']
+      );
+      profile = {
+        id: profileId,
+        user_id: userId,
+        phone: phone ? phone.trim() : null,
+        company_name: company_name ? company_name.trim() : null
+      };
+    } else if (cleanRole === 'EDITOR') {
+      await db.query(
+        'INSERT INTO editor_profiles (id, user_id, phone, skills, experience, portfolio_link, payment_rate, internal_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [profileId, userId, phone ? phone.trim() : null, skills ? skills.trim() : null, 'Self-registered editor', portfolio_link ? portfolio_link.trim() : null, 0.00, 'Self-registered editor account']
+      );
+      profile = {
+        id: profileId,
+        user_id: userId,
+        phone: phone ? phone.trim() : null,
+        skills: skills ? skills.trim() : null,
+        portfolio_link: portfolio_link ? portfolio_link.trim() : null
+      };
+    }
+
+    // Generate session token and set cookie
+    const newUser = {
+      id: userId,
+      email: cleanEmail,
+      name: name.trim(),
+      role: cleanRole,
+      status: 'ACTIVE'
+    };
+
+    const token = generateToken(newUser);
+    setAuthCookie(res, token);
+
+    // Audit log
+    try {
+      await db.query(
+        'INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ['aud-' + Date.now(), userId, 'USER_REGISTER', 'USER', userId, `New ${cleanRole} self-registered: ${cleanEmail}`, req.ip || '127.0.0.1']
+      );
+    } catch (auditErr) {
+      console.warn('[Audit] Registration audit log failed:', auditErr.message);
+    }
+
+    // Auto notification to Admin
+    try {
+      await db.query(
+        'INSERT INTO notifications (id, user_id, title, message, link) VALUES (?, ?, ?, ?, ?)',
+        [
+          'notif-' + Date.now(),
+          'u-admin-001',
+          `New ${cleanRole === 'CLIENT' ? 'Client' : 'Editor'} Registered`,
+          `${name.trim()} (${cleanEmail}) has joined the platform.`,
+          cleanRole === 'CLIENT' ? '#clients' : '#editors'
+        ]
+      );
+    } catch {}
+
+    res.status(201).json({
+      success: true,
+      message: `Account created successfully! Welcome to CineFlow Studio, ${name.trim()}.`,
+      token,
+      user: {
+        ...sanitizeUser(newUser, cleanRole),
+        profile
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   login,
   logout,
   getMe,
-  switchUserDemo
+  switchUserDemo,
+  register
 };
 

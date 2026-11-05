@@ -4,6 +4,18 @@
 
 const App = {
   activeRoute: 'overview',
+  authView: 'login', // 'login' or 'register'
+  registerRole: 'CLIENT', // 'CLIENT' or 'EDITOR'
+
+  setAuthView(view) {
+    this.authView = view;
+    this.renderLoginScreen();
+  },
+
+  setRegisterRole(role) {
+    this.registerRole = role;
+    this.renderLoginScreen();
+  },
 
   async init() {
     this.initTheme();
@@ -261,53 +273,179 @@ const App = {
     const mainContainer = document.getElementById('main-content-view');
     if (!mainContainer) return;
 
-    mainContainer.innerHTML = `
-      <div class="login-card-container">
-        <div style="text-align:center;margin-bottom:28px">
-          <div class="logo-badge" style="margin:0 auto 14px;width:56px;height:56px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));display:flex;align-items:center;justify-content:center;border-radius:16px;color:#fff;box-shadow:0 8px 24px rgba(37,99,235,0.35)">
-            <i data-lucide="video" style="width:28px;height:28px"></i>
+    if (this.authView === 'register') {
+      mainContainer.innerHTML = `
+        <div class="login-card-container register-card-container">
+          <div style="text-align:center;margin-bottom:20px">
+            <div class="logo-badge" style="margin:0 auto 12px;width:52px;height:52px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));display:flex;align-items:center;justify-content:center;border-radius:16px;color:#fff;box-shadow:0 8px 24px rgba(37,99,235,0.35)">
+              <i data-lucide="user-plus" style="width:26px;height:26px"></i>
+            </div>
+            <h2 style="font-size:1.45rem;font-weight:800;letter-spacing:-0.025em;color:var(--text-primary)">Create Account</h2>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">Join CineFlow Studio Platform</p>
           </div>
-          <h2 style="font-size:1.55rem;font-weight:800;letter-spacing:-0.025em;color:var(--text-primary)">CineFlow Studio</h2>
-          <p style="font-size:0.875rem;color:var(--text-muted);margin-top:6px">Video Editing Agency Management Platform</p>
-        </div>
 
-        <div class="login-form-box">
-          <div class="form-group" style="margin-bottom:18px">
-            <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Email Address</label>
-            <input type="email" id="login-email" class="form-control" placeholder="name@company.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+          <!-- Role Selector Segmented Controls -->
+          <div class="auth-role-tabs">
+            <button type="button" class="auth-role-tab ${this.registerRole === 'CLIENT' ? 'active' : ''}" id="role-tab-client">
+              <i data-lucide="briefcase" style="width:16px;height:16px"></i>
+              <span>Client</span>
+            </button>
+            <button type="button" class="auth-role-tab ${this.registerRole === 'EDITOR' ? 'active' : ''}" id="role-tab-editor">
+              <i data-lucide="scissors" style="width:16px;height:16px"></i>
+              <span>Video Editor</span>
+            </button>
           </div>
-          <div class="form-group" style="margin-bottom:24px">
-            <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Password</label>
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+
+          <div class="register-form-box">
+            ${this.registerRole === 'CLIENT' ? `
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Full Name *</label>
+                <input type="text" id="reg-name" class="form-control" placeholder="e.g. Sarah Jenkins" autocomplete="name" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Work Email *</label>
+                <input type="email" id="reg-email" class="form-control" placeholder="sarah@company.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Company / Channel Name *</label>
+                <input type="text" id="reg-company" class="form-control" placeholder="e.g. Apex Media or TechWithSarah" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Phone / WhatsApp Number *</label>
+                <input type="tel" id="reg-phone" class="form-control" placeholder="+1 (555) 019-2834" autocomplete="tel" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:20px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Password * (min. 6 characters)</label>
+                <input type="password" id="reg-password" class="form-control" placeholder="••••••••" autocomplete="new-password" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <button type="button" id="reg-submit-btn" class="btn btn-primary" style="width:100%;height:48px;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 4px 14px rgba(37,99,235,0.3)">
+                Register as Client
+              </button>
+            ` : `
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Full Name *</label>
+                <input type="text" id="reg-name" class="form-control" placeholder="e.g. David Ross" autocomplete="name" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Email Address *</label>
+                <input type="email" id="reg-email" class="form-control" placeholder="david@editorpro.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Phone / WhatsApp Number *</label>
+                <input type="tel" id="reg-phone" class="form-control" placeholder="+1 (555) 019-2834" autocomplete="tel" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Portfolio / Showreel Link *</label>
+                <input type="url" id="reg-portfolio" class="form-control" placeholder="https://vimeo.com/... or YouTube / Drive link" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Primary Software / Tools *</label>
+                <input type="text" id="reg-skills" class="form-control" placeholder="e.g. Premiere Pro, After Effects, DaVinci Resolve" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <div class="form-group" style="margin-bottom:20px">
+                <label class="form-label" style="display:block;margin-bottom:5px;font-weight:600;font-size:0.82rem;color:var(--text-secondary)">Password * (min. 6 characters)</label>
+                <input type="password" id="reg-password" class="form-control" placeholder="••••••••" autocomplete="new-password" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              </div>
+              <button type="button" id="reg-submit-btn" class="btn btn-primary" style="width:100%;height:48px;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 4px 14px rgba(37,99,235,0.3)">
+                Register as Editor
+              </button>
+            `}
           </div>
-          <button type="button" id="login-submit-btn" class="btn btn-primary" style="width:100%;height:48px;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 4px 14px rgba(37,99,235,0.3)">
-            Sign In
-          </button>
+
+          <div style="margin-top:20px;text-align:center">
+            <button type="button" id="switch-to-login-btn" class="auth-switch-link">
+              Already have an account? <span>Sign In here →</span>
+            </button>
+          </div>
+
+          <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.75rem;color:var(--text-muted)">
+            <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--accent-success)"></i>
+            <span>Direct & Confidential Onboarding</span>
+          </div>
         </div>
+      `;
 
-        <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.75rem;color:var(--text-muted)">
-          <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--accent-success)"></i>
-          <span>256-Bit Encrypted Client & Partner Portal</span>
-        </div>
-      </div>
-    `;
+      // Event bindings for register screen
+      const roleTabClient = document.getElementById('role-tab-client');
+      const roleTabEditor = document.getElementById('role-tab-editor');
+      if (roleTabClient) roleTabClient.onclick = () => App.setRegisterRole('CLIENT');
+      if (roleTabEditor) roleTabEditor.onclick = () => App.setRegisterRole('EDITOR');
 
-    // Direct DOM event bindings
-    const submitBtn = document.getElementById('login-submit-btn');
-    if (submitBtn) {
-      submitBtn.onclick = (e) => App.handleLoginForm(e);
-      submitBtn.addEventListener('click', (e) => App.handleLoginForm(e));
-    }
+      const switchToLoginBtn = document.getElementById('switch-to-login-btn');
+      if (switchToLoginBtn) switchToLoginBtn.onclick = () => App.setAuthView('login');
 
-    const emailInp = document.getElementById('login-email');
-    const passInp = document.getElementById('login-password');
-    [emailInp, passInp].forEach(inp => {
-      if (inp) {
-        inp.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') App.handleLoginForm(e);
-        });
+      const regSubmitBtn = document.getElementById('reg-submit-btn');
+      if (regSubmitBtn) {
+        regSubmitBtn.onclick = (e) => App.handleRegisterForm(e);
+        regSubmitBtn.addEventListener('click', (e) => App.handleRegisterForm(e));
       }
-    });
+
+      const regInputs = mainContainer.querySelectorAll('.register-form-box input');
+      regInputs.forEach(inp => {
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') App.handleRegisterForm(e);
+        });
+      });
+
+    } else {
+      // Default: Sign In view
+      mainContainer.innerHTML = `
+        <div class="login-card-container">
+          <div style="text-align:center;margin-bottom:28px">
+            <div class="logo-badge" style="margin:0 auto 14px;width:56px;height:56px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));display:flex;align-items:center;justify-content:center;border-radius:16px;color:#fff;box-shadow:0 8px 24px rgba(37,99,235,0.35)">
+              <i data-lucide="video" style="width:28px;height:28px"></i>
+            </div>
+            <h2 style="font-size:1.55rem;font-weight:800;letter-spacing:-0.025em;color:var(--text-primary)">CineFlow Studio</h2>
+            <p style="font-size:0.875rem;color:var(--text-muted);margin-top:6px">Video Editing Agency Management Platform</p>
+          </div>
+
+          <div class="login-form-box">
+            <div class="form-group" style="margin-bottom:18px">
+              <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Email Address</label>
+              <input type="email" id="login-email" class="form-control" placeholder="name@company.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+            </div>
+            <div class="form-group" style="margin-bottom:24px">
+              <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Password</label>
+              <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+            </div>
+            <button type="button" id="login-submit-btn" class="btn btn-primary" style="width:100%;height:48px;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 4px 14px rgba(37,99,235,0.3)">
+              Sign In
+            </button>
+          </div>
+
+          <div style="margin-top:20px;text-align:center">
+            <button type="button" id="switch-to-register-btn" class="auth-switch-link">
+              Don't have an account? <span>Register as Client or Editor →</span>
+            </button>
+          </div>
+
+          <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.75rem;color:var(--text-muted)">
+            <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--accent-success)"></i>
+            <span>256-Bit Encrypted Client & Partner Portal</span>
+          </div>
+        </div>
+      `;
+
+      // Direct DOM event bindings for login
+      const submitBtn = document.getElementById('login-submit-btn');
+      if (submitBtn) {
+        submitBtn.onclick = (e) => App.handleLoginForm(e);
+        submitBtn.addEventListener('click', (e) => App.handleLoginForm(e));
+      }
+
+      const switchToRegisterBtn = document.getElementById('switch-to-register-btn');
+      if (switchToRegisterBtn) switchToRegisterBtn.onclick = () => App.setAuthView('register');
+
+      const emailInp = document.getElementById('login-email');
+      const passInp = document.getElementById('login-password');
+      [emailInp, passInp].forEach(inp => {
+        if (inp) {
+          inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') App.handleLoginForm(e);
+          });
+        }
+      });
+    }
 
     if (window.lucide) window.lucide.createIcons();
   },
@@ -354,6 +492,91 @@ const App = {
       if (btn) {
         btn.disabled = false;
         btn.innerText = 'Sign In';
+      }
+    }
+  },
+
+  async handleRegisterForm(e) {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+
+    const name = document.getElementById('reg-name')?.value?.trim();
+    const email = document.getElementById('reg-email')?.value?.trim().toLowerCase();
+    const phone = document.getElementById('reg-phone')?.value?.trim();
+    const password = document.getElementById('reg-password')?.value;
+
+    if (!name || !email || !password || !phone) {
+      Toast.error('Please fill in all required fields.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Toast.error('Password must be at least 6 characters long.');
+      return;
+    }
+
+    const payload = {
+      role: this.registerRole,
+      name,
+      email,
+      phone,
+      password
+    };
+
+    if (this.registerRole === 'CLIENT') {
+      const company_name = document.getElementById('reg-company')?.value?.trim();
+      if (!company_name) {
+        Toast.error('Please enter your company or channel name.');
+        return;
+      }
+      payload.company_name = company_name;
+    } else if (this.registerRole === 'EDITOR') {
+      const portfolio_link = document.getElementById('reg-portfolio')?.value?.trim();
+      const skills = document.getElementById('reg-skills')?.value?.trim();
+      if (!portfolio_link) {
+        Toast.error('Please enter your portfolio or showreel link.');
+        return;
+      }
+      if (!skills) {
+        Toast.error('Please specify your primary software or tools.');
+        return;
+      }
+      payload.portfolio_link = portfolio_link;
+      payload.skills = skills;
+    }
+
+    const btn = document.getElementById('reg-submit-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Creating Account...';
+    }
+
+    try {
+      const res = await API.post('/auth/register', payload);
+      if (res.token) {
+        API.setToken(res.token);
+      }
+      State.currentUser = res.user;
+      document.body.classList.remove('login-mode');
+      this.authView = 'login'; // Reset for next sign-in session
+      Toast.success(res.message || `Welcome to CineFlow Studio, ${res.user.name}!`);
+      this.renderSidebar();
+      this.renderTopbarUser();
+
+      if (window.location.hash === '#overview') {
+        this.handleRouting();
+      } else {
+        window.location.hash = '#overview';
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      Toast.error(err.message || 'Registration failed. Please check your details.');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = this.registerRole === 'CLIENT' ? 'Register as Client' : 'Register as Editor';
       }
     }
   },

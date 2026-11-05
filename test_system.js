@@ -157,6 +157,46 @@ async function runTests() {
     assert(clientLogin.status === 200 && clientLogin.data.user.role === 'CLIENT', 'Client signs in successfully');
     const clientToken = clientLogin.cookie || clientLogin.data.token;
 
+    // Client Self-Registration
+    const clientReg = await dispatchRequest('POST', '/api/auth/register', {
+      body: {
+        role: 'CLIENT',
+        name: 'Sarah Jenkins',
+        email: `sarah_${Date.now()}@jenkinsmedia.com`,
+        password: 'ClientPassword123!',
+        company_name: 'Jenkins Media',
+        phone: '+1 (555) 019-2834'
+      }
+    });
+    assert(clientReg.status === 201 && clientReg.data.user.role === 'CLIENT' && clientReg.data.user.profile.company_name === 'Jenkins Media', 'Client self-registration succeeds with company & phone');
+
+    // Editor Self-Registration
+    const editorReg = await dispatchRequest('POST', '/api/auth/register', {
+      body: {
+        role: 'EDITOR',
+        name: 'David Ross',
+        email: `david_${Date.now()}@rossedits.com`,
+        password: 'EditorPassword123!',
+        phone: '+1 (555) 234-5678',
+        portfolio_link: 'https://vimeo.com/davidross-edits',
+        skills: 'Premiere Pro, After Effects, DaVinci Resolve'
+      }
+    });
+    assert(editorReg.status === 201 && editorReg.data.user.role === 'EDITOR' && editorReg.data.user.profile.skills.includes('Premiere'), 'Editor self-registration succeeds with portfolio & tools');
+
+    // Prevent duplicate email registration
+    const dupReg = await dispatchRequest('POST', '/api/auth/register', {
+      body: {
+        role: 'CLIENT',
+        name: 'Duplicate Sarah',
+        email: clientReg.data.user.email,
+        password: 'AnotherPassword123!',
+        company_name: 'Jenkins Media',
+        phone: '+1 (555) 019-2834'
+      }
+    });
+    assert(dupReg.status === 409, 'Duplicate email registration rejected with 409 Conflict');
+
     // ----------------------------------------------------
     // TEST 2: Strict Privacy Boundaries & Data Sanitization
     // ----------------------------------------------------
