@@ -1065,39 +1065,201 @@ textarea.form-control {
   font-weight: 600;
 }
 
-/* Responsive Breakpoints */
+/* Mobile Sidebar Backdrop */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  z-index: 45;
+  display: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  touch-action: manipulation;
+}
+
+.sidebar-backdrop.active {
+  display: block;
+  opacity: 1;
+}
+
+.mobile-chat-back-btn {
+  display: none;
+}
+
+/* Responsive Breakpoints & Mobile Ratio Tuning */
 @media (max-width: 1024px) {
   .sidebar {
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 50;
     transform: translateX(-100%);
+    box-shadow: none;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .sidebar.mobile-open {
     transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
   }
+
   .mobile-menu-toggle {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
 @media (max-width: 768px) {
+  #app {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   .topbar {
-    padding: 0 16px;
+    padding: 0 12px;
+    height: 56px;
   }
+
   .content-body {
-    padding: 16px;
+    padding: 14px 12px;
   }
-  .demo-switcher-wrap {
-    display: none; /* Accessible in settings or dropdown */
+
+  .page-title {
+    font-size: 1.35rem;
+    line-height: 1.25;
   }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-value {
+    font-size: 1.35rem;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    border-radius: var(--radius-md);
+  }
+
+  .data-table th, .data-table td {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  /* Responsive Chat */
+  .chat-container {
+    position: relative;
+    height: calc(100dvh - 120px);
+    border-radius: var(--radius-lg);
+  }
+
+  .chat-sidebar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+  }
+
+  .chat-main {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .chat-container.mobile-messages-active .chat-sidebar {
+    display: none;
+  }
+
+  .chat-container.mobile-messages-active .chat-main {
+    display: flex;
+  }
+
+  .mobile-chat-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .user-name-text {
+    display: none;
+  }
+
+  .topbar-left .badge {
+    display: none;
+  }
+
   .form-row {
     flex-direction: column;
     gap: 0;
   }
-  .chat-sidebar {
+
+  .card {
+    padding: 16px 14px;
+    border-radius: var(--radius-lg);
+  }
+
+  .card-header {
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .modal-dialog {
+    max-width: 100%;
     width: 100%;
+    max-height: 92dvh;
+    border-radius: var(--radius-xl);
+  }
+
+  .modal-header, .modal-body, .modal-footer {
+    padding: 14px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .top-action-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .login-card-container {
+    padding: 26px 18px;
+    border-radius: var(--radius-lg);
   }
 }
 
@@ -1132,27 +1294,21 @@ body.login-mode .content-body {
   align-items: center !important;
   justify-content: center !important;
   min-height: calc(100vh - var(--header-height)) !important;
+  min-height: calc(100dvh - var(--header-height)) !important;
   padding: 16px !important;
 }
 
 .login-card-container {
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
-  padding: 32px 28px;
+  padding: 36px 30px;
   box-shadow: var(--shadow-xl);
   margin: auto;
   position: relative;
   z-index: 10;
-}
-
-@media (max-width: 480px) {
-  .login-card-container {
-    padding: 24px 18px;
-    border-radius: var(--radius-lg);
-  }
 }
 
 

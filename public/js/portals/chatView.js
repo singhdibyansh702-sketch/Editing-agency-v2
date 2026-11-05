@@ -52,6 +52,9 @@ const ChatView = {
         <div class="chat-main">
           <div class="chat-header" id="chat-header-el">
             <div style="display:flex;align-items:center;gap:10px">
+              <button class="mobile-chat-back-btn" onclick="ChatView.backToContactList()" title="Back to contacts">
+                <i data-lucide="arrow-left" style="width:16px;height:16px"></i>
+              </button>
               <div class="user-avatar" id="chat-active-avatar" style="width:34px;height:34px;font-size:0.8rem">AG</div>
               <div>
                 <div style="font-weight:700;font-size:0.95rem" id="chat-active-name">Select a conversation</div>
@@ -187,7 +190,14 @@ const ChatView = {
     // Highlight in list
     document.querySelectorAll('.chat-user-item').forEach(el => el.classList.remove('active'));
 
+    // On mobile, show messages panel
+    document.querySelector('.chat-container')?.classList.add('mobile-messages-active');
+
     this.loadMessages(userId, true);
+  },
+
+  backToContactList() {
+    document.querySelector('.chat-container')?.classList.remove('mobile-messages-active');
   },
 
   async loadMessages(userId, scrollToBottom = true) {

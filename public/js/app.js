@@ -111,7 +111,7 @@ const App = {
     navEl.innerHTML = `
       <div class="nav-section-title">Navigation (${user.role})</div>
       ${items.map(i => `
-        <a href="#${i.route}" class="nav-item ${this.activeRoute === i.route ? 'active' : ''}">
+        <a href="#${i.route}" class="nav-item ${this.activeRoute === i.route ? 'active' : ''}" onclick="App.closeMobileSidebar()">
           <i data-lucide="${i.icon}" style="width:18px;height:18px"></i>
           <span>${i.label}</span>
         </a>
@@ -140,7 +140,7 @@ const App = {
     const userProfileEl = document.getElementById('topbar-user-badge');
     if (userProfileEl) {
       userProfileEl.innerHTML = `
-        <span style="font-size:0.85rem;font-weight:600">${user.name}</span>
+        <span class="user-name-text" style="font-size:0.85rem;font-weight:600">${user.name}</span>
         <span class="badge ${user.role === 'ADMIN' ? 'badge-progress' : user.role === 'EDITOR' ? 'badge-review' : 'badge-approved'}" style="font-size:0.7rem">
           ${user.role}
         </span>
@@ -263,51 +263,36 @@ const App = {
 
     mainContainer.innerHTML = `
       <div class="login-card-container">
-        <div style="text-align:center;margin-bottom:24px">
-          <div class="logo-badge" style="margin:0 auto 12px;width:52px;height:52px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));display:flex;align-items:center;justify-content:center;border-radius:14px;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,0.3)">
-            <i data-lucide="video" style="width:26px;height:26px"></i>
+        <div style="text-align:center;margin-bottom:28px">
+          <div class="logo-badge" style="margin:0 auto 14px;width:56px;height:56px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));display:flex;align-items:center;justify-content:center;border-radius:16px;color:#fff;box-shadow:0 8px 24px rgba(37,99,235,0.35)">
+            <i data-lucide="video" style="width:28px;height:28px"></i>
           </div>
-          <h2 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">CineFlow Studio</h2>
-          <p style="font-size:0.875rem;color:var(--text-muted);margin-top:4px">Sign in to your agency portal</p>
+          <h2 style="font-size:1.55rem;font-weight:800;letter-spacing:-0.025em;color:var(--text-primary)">CineFlow Studio</h2>
+          <p style="font-size:0.875rem;color:var(--text-muted);margin-top:6px">Video Editing Agency Management Platform</p>
         </div>
 
         <div class="login-form-box">
-          <div class="form-group" style="margin-bottom:16px">
-            <label class="form-label" style="display:block;margin-bottom:6px;font-weight:600;font-size:0.85rem">Email Address</label>
-            <input type="email" id="login-email" class="form-control" placeholder="admin@videoagency.com" autocapitalize="none" autocorrect="off" autocomplete="email" onkeydown="if(event.key==='Enter') App.handleLoginForm(event);" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
+          <div class="form-group" style="margin-bottom:18px">
+            <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Email Address</label>
+            <input type="email" id="login-email" class="form-control" placeholder="name@company.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
           </div>
-          <div class="form-group" style="margin-bottom:20px">
-            <label class="form-label" style="display:block;margin-bottom:6px;font-weight:600;font-size:0.85rem">Password</label>
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') App.handleLoginForm(event);" required style="width:100%;height:46px;padding:0 14px;border-radius:var(--radius-md);font-size:0.95rem">
+          <div class="form-group" style="margin-bottom:24px">
+            <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Password</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
           </div>
-          <button type="button" id="login-submit-btn" class="btn btn-primary" onclick="App.handleLoginForm(event)" style="width:100%;height:46px;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">
+          <button type="button" id="login-submit-btn" class="btn btn-primary" style="width:100%;height:48px;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 4px 14px rgba(37,99,235,0.3)">
             Sign In
           </button>
         </div>
 
-        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border-color)">
-          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;text-align:center">
-            Quick 1-Tap Demo Logins
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <button type="button" id="demo-btn-admin" class="btn btn-sm btn-outline" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
-              👑 Admin
-            </button>
-            <button type="button" id="demo-btn-editor" class="btn btn-sm btn-outline" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
-              ✂️ Editor
-            </button>
-            <button type="button" id="demo-btn-client" class="btn btn-sm btn-outline" style="font-size:0.8rem;padding:8px 4px;text-align:center;min-height:42px">
-              💼 Client
-            </button>
-          </div>
-          <div style="margin-top:14px;font-size:0.75rem;color:var(--text-muted);text-align:center;line-height:1.5">
-            Admin: <code style="color:var(--accent-primary)">admin@videoagency.com</code> / <code style="color:var(--accent-primary)">AdminPassword123!</code>
-          </div>
+        <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.75rem;color:var(--text-muted)">
+          <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--accent-success)"></i>
+          <span>256-Bit Encrypted Client & Partner Portal</span>
         </div>
       </div>
     `;
 
-    // Direct DOM event bindings (bypasses any browser attribute policy)
+    // Direct DOM event bindings
     const submitBtn = document.getElementById('login-submit-btn');
     if (submitBtn) {
       submitBtn.onclick = (e) => App.handleLoginForm(e);
@@ -324,33 +309,7 @@ const App = {
       }
     });
 
-    const adminBtn = document.getElementById('demo-btn-admin');
-    if (adminBtn) {
-      adminBtn.onclick = () => App.quickLogin('admin@videoagency.com', 'AdminPassword123!');
-      adminBtn.addEventListener('click', () => App.quickLogin('admin@videoagency.com', 'AdminPassword123!'));
-    }
-
-    const editorBtn = document.getElementById('demo-btn-editor');
-    if (editorBtn) {
-      editorBtn.onclick = () => App.quickLogin('editor1@videoagency.com', 'EditorPass123!');
-      editorBtn.addEventListener('click', () => App.quickLogin('editor1@videoagency.com', 'EditorPass123!'));
-    }
-
-    const clientBtn = document.getElementById('demo-btn-client');
-    if (clientBtn) {
-      clientBtn.onclick = () => App.quickLogin('client1@techflow.io', 'ClientPass123!');
-      clientBtn.addEventListener('click', () => App.quickLogin('client1@techflow.io', 'ClientPass123!'));
-    }
-
     if (window.lucide) window.lucide.createIcons();
-  },
-
-  async quickLogin(email, password) {
-    const emailEl = document.getElementById('login-email');
-    const passEl = document.getElementById('login-password');
-    if (emailEl) emailEl.value = email;
-    if (passEl) passEl.value = password;
-    await this.handleLoginForm();
   },
 
   async handleLoginForm(e) {
@@ -400,7 +359,19 @@ const App = {
   },
 
   toggleMobileSidebar() {
-    document.querySelector('.sidebar')?.classList.toggle('mobile-open');
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop-el');
+    if (sidebar) {
+      const isOpen = sidebar.classList.toggle('mobile-open');
+      if (backdrop) {
+        backdrop.classList.toggle('active', isOpen);
+      }
+    }
+  },
+
+  closeMobileSidebar() {
+    document.querySelector('.sidebar')?.classList.remove('mobile-open');
+    document.getElementById('sidebar-backdrop-el')?.classList.remove('active');
   }
 };
 
