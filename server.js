@@ -12,18 +12,17 @@ async function startServer() {
     // 1. Initialize Database (MySQL or embedded Relational SQLite fallback)
     await db.initDatabase();
 
-    // 2. Seed realistic demo data
-    await seedDatabase(false);
+    // 2. Initialize administrator & clean state
+    await seedDatabase(false, false);
 
     // 3. Start Express server
     const server = app.listen(config.port, () => {
       console.log(`[Server] Core API & Web Portal running at: http://localhost:${config.port}`);
       console.log(`[Server] Active Database Mode: ${db.getDbType().toUpperCase()}`);
       console.log('----------------------------------------------------');
-      console.log('Demo Credentials:');
-      console.log('  - Admin:  admin@videoagency.com / AdminPassword123!');
-      console.log('  - Editor: editor1@videoagency.com / EditorPass123!');
-      console.log('  - Client: client1@techflow.io / ClientPass123!');
+      console.log('Administrator Provisioned:');
+      console.log('  - Name: admin dibyansh');
+      console.log('  - Email/Username: admin@videoagency.com (or "admin")');
       console.log('----------------------------------------------------');
     });
 

@@ -702,6 +702,75 @@ async function cancelProject(req, res, next) {
   }
 }
 
+async function deleteProject(req, res, next) {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    const [projects] = await db.query('SELECT * FROM projects WHERE id = ?', [id]);
+    if (!projects || projects.length === 0) {
+      return res.status(404).json({ success: false, message: 'Project not found.' });
+    }
+    const project = projects[0];
+
+    // Privacy & permission boundary: Client can only delete their own project. Admin can delete any.
+    if (user.role === 'CLIENT' && project.client_id !== user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete this project.'
+      });
+    }
+
+    if (user.role === 'EDITOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Editors are not authorized to delete projects.'
+      });
+    }
+
+    // Clean up dependent child records
+    await db.query('DELETE FROM payments WHERE project_id = ?', [id]);
+    await db.query('DELETE FROM project_submissions WHERE project_id = ?', [id]);
+    await db.query('UPDATE direct_messages SET project_id = NULL WHERE project_id = ?', [id]);
+    await db.query('DELETE FROM projects WHERE id = ?', [id]);
+
+    // Audit log
+    try {
+      await db.query(
+        'INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [generateId('aud'), user.id, 'PROJECT_DELETED', 'PROJECT', id, `Project deleted: ${project.title} (${project.project_code})`, req.ip || '127.0.0.1']
+      );
+    } catch {}
+
+    // If client deleted it, notify admin
+    if (user.role === 'CLIENT') {
+      try {
+        const [admins] = await db.query('SELECT id FROM users WHERE role = "ADMIN"');
+        for (const adm of admins) {
+          await db.query(
+            'INSERT INTO notifications (id, user_id, title, message, link, type) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              generateId('ntf'),
+              adm.id,
+              'Project Deleted by Client',
+              `Client deleted project "${project.title}" (${project.project_code}).`,
+              '/#projects',
+              'PROJECT_DELETED'
+            ]
+          );
+        }
+      } catch {}
+    }
+
+    res.json({
+      success: true,
+      message: 'Project successfully deleted.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getProjects,
   getProjectById,
@@ -710,5 +779,6 @@ module.exports = {
   submitCut,
   reviewCut,
   completeProject,
-  cancelProject
+  cancelProject,
+  deleteProject
 };

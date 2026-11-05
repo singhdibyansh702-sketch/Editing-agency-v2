@@ -28,5 +28,9 @@ router.post('/:id/complete', requireAdmin, projectController.completeProject);
 // Admin Cancel Project
 router.post('/:id/cancel', requireAdmin, projectController.cancelProject);
 
+// Delete Project (Client for own project if added by mistake/not required, Admin for any)
+router.delete('/:id', projectController.deleteProject);
+router.post('/:id/delete', projectController.deleteProject);
+
 module.exports = router;
 

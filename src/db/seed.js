@@ -1,64 +1,85 @@
 const bcrypt = require('bcryptjs');
 const db = require('./index');
 
-async function seedDatabase(force = false) {
+async function seedDatabase(force = false, isTest = false) {
   try {
     // Ensure database is initialized before querying
     await db.initDatabase();
 
-    // Check if users table already has records
-    const [existingUsers] = await db.query('SELECT COUNT(*) as count FROM users');
-    const userCount = existingUsers && existingUsers[0] ? (existingUsers[0].count || existingUsers[0]['COUNT(*)']) : 0;
-    
-    if (userCount > 0 && !force) {
-      console.log(`[Seed] Database already contains ${userCount} users. Skipping seeder.`);
+    const adminHash = await bcrypt.hash('BADAL_12345', 10);
+    const adminId = 'u-admin-001';
+
+    // 1. Purge legacy demo users and demo data
+    const demoEmails = [
+      'editor1@videoagency.com',
+      'editor2@videoagency.com',
+      'client1@techflow.io',
+      'client2@apexfitness.com'
+    ];
+
+    if (!isTest || force) {
+      console.log('[Seed] Purging legacy demo accounts and demo data...');
+      try {
+        await db.query(`DELETE FROM users WHERE email IN ('editor1@videoagency.com', 'editor2@videoagency.com', 'client1@techflow.io', 'client2@apexfitness.com') OR id IN ('u-editor-001', 'u-editor-002', 'u-client-001', 'u-client-002')`);
+        await db.query(`DELETE FROM client_profiles WHERE id IN ('cp-001', 'cp-002') OR user_id IN ('u-client-001', 'u-client-002')`);
+        await db.query(`DELETE FROM editor_profiles WHERE id IN ('ep-001', 'ep-002') OR user_id IN ('u-editor-001', 'u-editor-002')`);
+        await db.query(`DELETE FROM payments WHERE project_id IN ('prj-001', 'prj-002', 'prj-003', 'prj-004')`);
+        await db.query(`DELETE FROM project_submissions WHERE project_id IN ('prj-001', 'prj-002', 'prj-003', 'prj-004')`);
+        await db.query(`DELETE FROM direct_messages WHERE sender_id IN ('u-editor-001', 'u-editor-002', 'u-client-001', 'u-client-002') OR receiver_id IN ('u-editor-001', 'u-editor-002', 'u-client-001', 'u-client-002')`);
+        await db.query(`DELETE FROM projects WHERE id IN ('prj-001', 'prj-002', 'prj-003', 'prj-004')`);
+      } catch (purgeErr) {
+        console.warn('[Seed] Warning during demo cleanup:', purgeErr.message);
+      }
+    }
+
+    // 2. Ensure Admin Dibyansh is provisioned with password BADAL_12345
+    const [existingAdmins] = await db.query('SELECT * FROM users WHERE role = "ADMIN" OR email = "admin@videoagency.com" OR id = ? LIMIT 1', [adminId]);
+
+    if (existingAdmins && existingAdmins.length > 0) {
+      await db.query(
+        'UPDATE users SET name = ?, email = ?, password_hash = ?, status = "ACTIVE" WHERE id = ?',
+        ['admin dibyansh', 'admin@videoagency.com', adminHash, existingAdmins[0].id]
+      );
+      console.log(`[Seed] Administrator updated to "admin dibyansh" with new credentials.`);
+    } else {
+      await db.query(
+        'INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [adminId, 'admin@videoagency.com', adminHash, 'admin dibyansh', 'ADMIN', 'ACTIVE']
+      );
+      console.log('[Seed] Admin "admin dibyansh" provisioned successfully.');
+    }
+
+    // If not in automated test mode, stop here: production stays clean!
+    if (!isTest) {
+      console.log('[Seed] Production database ready. All demo accounts removed.');
       return;
     }
 
-    if (force) {
-      console.log('[Seed] Resetting database tables for fresh seeding...');
-      await db.query('DELETE FROM payments');
-      await db.query('DELETE FROM project_submissions');
-      await db.query('DELETE FROM direct_messages');
-      await db.query('DELETE FROM notifications');
-      await db.query('DELETE FROM audit_logs');
-      await db.query('DELETE FROM projects');
-      await db.query('DELETE FROM client_profiles');
-      await db.query('DELETE FROM editor_profiles');
-      await db.query('DELETE FROM users');
-    }
-
-    console.log('[Seed] Seeding database with realistic demo records...');
-
-    // Password hashes
-    const adminHash = await bcrypt.hash('AdminPassword123!', 10);
+    // ----------------------------------------------------
+    // TEST RUNNER ONLY (isTest = true)
+    // ----------------------------------------------------
     const editorHash = await bcrypt.hash('EditorPass123!', 10);
     const clientHash = await bcrypt.hash('ClientPass123!', 10);
 
-    // User IDs
-    const adminId = 'u-admin-001';
     const editor1Id = 'u-editor-001';
     const editor2Id = 'u-editor-002';
     const client1Id = 'u-client-001';
     const client2Id = 'u-client-002';
 
-    // 1. Insert Users
-    const users = [
-      [adminId, 'admin@videoagency.com', adminHash, 'Alex Vance (Agency Owner)', 'ADMIN', 'ACTIVE'],
+    const testUsers = [
       [editor1Id, 'editor1@videoagency.com', editorHash, 'Liam Vance', 'EDITOR', 'ACTIVE'],
       [editor2Id, 'editor2@videoagency.com', editorHash, 'Sophia Ray', 'EDITOR', 'ACTIVE'],
       [client1Id, 'client1@techflow.io', clientHash, 'Marcus Brody', 'CLIENT', 'ACTIVE'],
       [client2Id, 'client2@apexfitness.com', clientHash, 'Elena Vance', 'CLIENT', 'ACTIVE'],
     ];
 
-    for (const u of users) {
+    for (const u of testUsers) {
       await db.query(
         'INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)',
         u
       );
     }
 
-    // 2. Insert Client Profiles
     await db.query(
       'INSERT INTO client_profiles (id, user_id, phone, company_name, notes) VALUES (?, ?, ?, ?, ?)',
       ['cp-001', client1Id, '+1 (555) 234-5678', 'TechFlow Media', 'High-growth tech SaaS and developer review channel. Bi-weekly releases.']
@@ -68,7 +89,6 @@ async function seedDatabase(force = false) {
       ['cp-002', client2Id, '+1 (555) 876-5432', 'Apex Athletics', 'Performance fitness brand. High demand for vertical reels and fast-paced brand spots.']
     );
 
-    // 3. Insert Editor Profiles
     await db.query(
       'INSERT INTO editor_profiles (id, user_id, phone, skills, experience, portfolio_link, payment_rate, internal_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -96,8 +116,7 @@ async function seedDatabase(force = false) {
       ]
     );
 
-    // 4. Insert Projects
-    const projects = [
+    const testProjects = [
       [
         'prj-001',
         'PRJ-1001',
@@ -184,7 +203,7 @@ async function seedDatabase(force = false) {
       ]
     ];
 
-    for (const p of projects) {
+    for (const p of testProjects) {
       await db.query(
         `INSERT INTO projects (
           id, project_code, title, description, video_type, editing_requirements,
@@ -196,7 +215,6 @@ async function seedDatabase(force = false) {
       );
     }
 
-    // 5. Insert Submissions
     await db.query(
       `INSERT INTO project_submissions (id, project_id, editor_id, submission_link, notes, version, status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -211,7 +229,6 @@ async function seedDatabase(force = false) {
       ]
     );
 
-    // 6. Insert Payments
     const payments = [
       ['pmt-001', 'prj-001', 'CLIENT_PAYMENT', 350.00, 'USD', 'Stripe', new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '), 'ch_3N1aBcDeFgHiJkLm', '50% upfront deposit'],
       ['pmt-002', 'prj-002', 'CLIENT_PAYMENT', 42000.00, 'INR', 'UPI / GPay / IMPS', new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '), 'UPI-8849201948', 'Full payment received upfront via UPI'],
@@ -227,15 +244,13 @@ async function seedDatabase(force = false) {
       );
     }
 
-    // 7. Insert Direct Messages (Client <-> Admin, Editor <-> Admin ONLY)
     const messages = [
-      // Client 1 <-> Admin
       [
         'msg-001',
         client1Id,
         adminId,
         'prj-001',
-        'Hi Alex! Just uploaded the raw footage for the AI Assistant showcase. Can we ensure the intro hook has that crisp 3D UI tracker zoom?',
+        'Hi Admin! Just uploaded the raw footage for the AI Assistant showcase. Can we ensure the intro hook has that crisp 3D UI tracker zoom?',
         1,
         new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
       ],
@@ -244,17 +259,16 @@ async function seedDatabase(force = false) {
         adminId,
         client1Id,
         'prj-001',
-        'Hey Marcus! Absolutely. The spec doc is confirmed and our motion team is already setting up the 3D title trackers. We are right on schedule for the Friday preview.',
+        'Hey Marcus! Absolutely. The spec doc is confirmed and our motion team is already setting up the 3D title trackers.',
         1,
         new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
       ],
-      // Editor 2 <-> Admin
       [
         'msg-003',
         editor2Id,
         adminId,
         'prj-002',
-        'Hey Alex, Cut 1 for the Apex Athletics Commercial is ready and submitted in the portal. Please review the color grading on the gym floor shots!',
+        'Hey Admin, Cut 1 for the Apex Athletics Commercial is ready and submitted in the portal.',
         1,
         new Date(Date.now() - 12 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
       ],
@@ -263,7 +277,7 @@ async function seedDatabase(force = false) {
         adminId,
         editor2Id,
         'prj-002',
-        'Reviewing now Sophia! Pacing looks fantastic, loving the beat drops. I will give you final feedback shortly.',
+        'Reviewing now Sophia! Pacing looks fantastic, loving the beat drops.',
         0,
         new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
       ]
@@ -276,37 +290,7 @@ async function seedDatabase(force = false) {
       );
     }
 
-    // 8. Insert Notifications
-    const notifications = [
-      ['ntf-001', adminId, 'New Project Request', 'Elena Vance submitted request "High-Intensity Hybrid Training Masterclass Module 1" (₹28,000 proposed budget).', '/#projects', 0, 'PROJECT_REQUEST'],
-      ['ntf-002', adminId, 'New Cut Submitted', 'Editor submitted Cut 1 for "Apex Athletics Summer Launch Commercial & 3x Reels".', '/#projects', 0, 'SUBMISSION'],
-      ['ntf-003', editor1Id, 'New Project Assigned', 'You have been assigned to project "TechFlow AI Assistant SaaS Showcase (4K)". Agreed payout: $350.00.', '/#projects', 1, 'ASSIGNMENT'],
-      ['ntf-004', client1Id, 'Quote Approved', 'Your project "TechFlow AI Assistant SaaS Showcase (4K)" has been approved and moved to In Progress.', '/#projects', 1, 'PROJECT_UPDATE']
-    ];
-
-    for (const n of notifications) {
-      await db.query(
-        'INSERT INTO notifications (id, user_id, title, message, link, is_read, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        n
-      );
-    }
-
-    // 9. Insert Audit Logs
-    const auditLogs = [
-      ['aud-001', adminId, 'PROJECT_QUOTE_APPROVED', 'PROJECT', 'prj-001', 'Approved quote of $700.00 for PRJ-1001 and assigned editor Liam Vance with $350.00 payout.', '127.0.0.1'],
-      ['aud-002', adminId, 'PAYMENT_RECORDED', 'PAYMENT', 'pmt-002', 'Recorded client payment of ₹42,000.00 via UPI / GPay for PRJ-1002.', '127.0.0.1'],
-      ['aud-003', editor2Id, 'CUT_SUBMITTED', 'PROJECT_SUBMISSION', 'sub-001', 'Submitted Version 1 cut link for review on PRJ-1002.', '127.0.0.1'],
-      ['aud-004', adminId, 'PROJECT_COMPLETED', 'PROJECT', 'prj-003', 'Marked PRJ-1003 Completed and delivered final download links to client Marcus Brody.', '127.0.0.1']
-    ];
-
-    for (const a of auditLogs) {
-      await db.query(
-        'INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        a
-      );
-    }
-
-    console.log('[Seed] Realistic demo records successfully populated!');
+    console.log('[Seed] Test runner fixture records populated.');
   } catch (err) {
     console.error('[Seed] Error seeding database:', err);
   }

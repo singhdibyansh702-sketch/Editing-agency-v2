@@ -401,8 +401,8 @@ const App = {
 
           <div class="login-form-box">
             <div class="form-group" style="margin-bottom:18px">
-              <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Email Address</label>
-              <input type="email" id="login-email" class="form-control" placeholder="name@company.com" autocapitalize="none" autocorrect="off" autocomplete="email" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
+              <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Email Address or Admin Username</label>
+              <input type="text" id="login-email" class="form-control" placeholder="admin or email address" autocapitalize="none" autocorrect="off" autocomplete="username email" required style="width:100%;height:48px;padding:0 14px;border-radius:var(--radius-md);font-size:1rem">
             </div>
             <div class="form-group" style="margin-bottom:24px">
               <label class="form-label" style="display:block;margin-bottom:7px;font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Password</label>

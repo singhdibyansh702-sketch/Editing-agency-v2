@@ -175,6 +175,9 @@ const ClientPortal = {
                   <a href="#chat" class="btn btn-sm btn-outline">
                     <i data-lucide="message-square" style="width:14px;height:14px"></i> Chat with Agency Admin
                   </a>
+                  <button type="button" class="btn btn-sm btn-outline" style="color:var(--accent-danger);border-color:rgba(239,68,68,0.3)" onclick="ClientPortal.confirmDeleteProject('${p.id}', '${(p.title || '').replace(/'/g, "\\'")}')">
+                    <i data-lucide="trash-2" style="width:14px;height:14px"></i> Delete
+                  </button>
                 </div>
               </div>
             </div>
@@ -329,6 +332,41 @@ const ClientPortal = {
       this.loadOverviewData();
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  confirmDeleteProject(projectId, projectTitle) {
+    Modal.open({
+      title: 'Delete Project Request',
+      bodyHtml: `
+        <div style="padding:10px 0">
+          <p style="font-size:0.95rem;margin-bottom:12px;color:var(--text-primary)">
+            Are you sure you want to delete <strong>${projectTitle}</strong>?
+          </p>
+          <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.5">
+            If this project was submitted by mistake or is no longer required, it will be permanently removed from your dashboard and from agency production.
+          </p>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button class="btn btn-danger" onclick="ClientPortal.deleteProject('${projectId}')">
+          <i data-lucide="trash-2" style="width:14px;height:14px"></i> Yes, Delete Project
+        </button>
+      `
+    });
+    if (window.lucide) window.lucide.createIcons();
+  },
+
+  async deleteProject(projectId) {
+    try {
+      await API.delete(`/projects/${projectId}`);
+      Toast.success('Project has been deleted.');
+      Modal.close();
+      await this.loadOverviewData();
+    } catch (err) {
+      console.error(err);
+      Toast.error(err.message || 'Failed to delete project.');
     }
   }
 };

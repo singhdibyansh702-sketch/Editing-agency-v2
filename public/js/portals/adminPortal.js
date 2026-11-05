@@ -447,6 +447,9 @@ const AdminPortal = {
                             Deliver
                           </button>
                         ` : ''}
+                        <button class="btn btn-sm btn-outline" style="color:var(--accent-danger);border-color:rgba(239,68,68,0.25)" onclick="AdminPortal.confirmDeleteProject('${p.id}', '${p.project_code}')" title="Delete Project">
+                          <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -987,6 +990,41 @@ const AdminPortal = {
       });
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  confirmDeleteProject(projectId, projectCode) {
+    Modal.open({
+      title: 'Delete Project',
+      bodyHtml: `
+        <div style="padding:10px 0">
+          <p style="font-size:0.95rem;margin-bottom:12px">
+            Are you sure you want to permanently delete project <strong>${projectCode}</strong>?
+          </p>
+          <p style="font-size:0.85rem;color:var(--text-muted)">
+            All associated cuts, submissions, and payments will be permanently removed.
+          </p>
+        </div>
+      `,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button class="btn btn-danger" onclick="AdminPortal.deleteProject('${projectId}')">
+          <i data-lucide="trash-2" style="width:14px;height:14px"></i> Yes, Delete Project
+        </button>
+      `
+    });
+    if (window.lucide) window.lucide.createIcons();
+  },
+
+  async deleteProject(projectId) {
+    try {
+      await API.delete(`/projects/${projectId}`);
+      Toast.success('Project deleted successfully.');
+      Modal.close();
+      await this.fetchAndRenderProjectsTable();
+    } catch (err) {
+      console.error(err);
+      Toast.error(err.message || 'Failed to delete project.');
     }
   },
 

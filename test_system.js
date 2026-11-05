@@ -115,7 +115,7 @@ async function runTests() {
   console.log('====================================================');
 
   await db.initDatabase();
-  await seedDatabase(true);
+  await seedDatabase(true, true);
 
   let passed = 0;
   let failed = 0;
@@ -132,16 +132,22 @@ async function runTests() {
 
   try {
     // ----------------------------------------------------
-    // TEST 1: Authentication & Demo Logins
+    // TEST 1: Authentication & Role Verification
     // ----------------------------------------------------
     console.log('\n--- Test Group 1: Authentication & Role Verification ---');
 
-    // Admin login
+    // Admin login with new credentials (BADAL_12345 / admin dibyansh)
     const adminLogin = await dispatchRequest('POST', '/api/auth/login', {
-      body: { email: 'admin@videoagency.com', password: 'AdminPassword123!' }
+      body: { email: 'admin', password: 'BADAL_12345' }
     });
-    assert(adminLogin.status === 200 && adminLogin.data.user.role === 'ADMIN', 'Admin signs in successfully');
+    assert(adminLogin.status === 200 && adminLogin.data.user.role === 'ADMIN' && adminLogin.data.user.name === 'admin dibyansh', 'Admin Dibyansh signs in successfully with username alias');
     const adminToken = adminLogin.cookie || adminLogin.data.token;
+
+    // Admin login with full email
+    const adminEmailLogin = await dispatchRequest('POST', '/api/auth/login', {
+      body: { email: 'admin@videoagency.com', password: 'BADAL_12345' }
+    });
+    assert(adminEmailLogin.status === 200 && adminEmailLogin.data.user.name === 'admin dibyansh', 'Admin Dibyansh signs in with full email address');
 
     // Editor login
     const editorLogin = await dispatchRequest('POST', '/api/auth/login', {
@@ -412,6 +418,43 @@ async function runTests() {
     assert(vData && vData.duration_seconds > 0, 'Duration parsed');
     assert(vData && vData.resolution !== undefined, 'Resolution parsed');
     assert(vData && vData.thumbnails && vData.thumbnails.length === 3, 'Keyframe thumbnails generated (10%, 50%, 80%)');
+
+    // ----------------------------------------------------
+    // TEST 7: Client Project Deletion & Protection
+    // ----------------------------------------------------
+    console.log('\n--- Test Group 7: Project Deletion Workflow ---');
+
+    // Client creates an accidental / mistaken project
+    const accidentalProject = await dispatchRequest('POST', '/api/projects', {
+      headers: { cookie: `token=${clientToken}` },
+      body: {
+        title: 'Accidental Project Submission',
+        video_type: 'Shorts / TikTok',
+        currency: 'USD',
+        client_budget: 150.00,
+        reference_link: 'https://drive.google.com/drive/folders/mistaken-upload'
+      }
+    });
+    assert(accidentalProject.status === 201, 'Client submits accidental project request');
+    const accidentalId = accidentalProject.data.project.id;
+
+    // Editor attempts to delete client project -> 403 Forbidden
+    const editorDeleteAttempt = await dispatchRequest('DELETE', `/api/projects/${accidentalId}`, {
+      headers: { cookie: `token=${editorToken}` }
+    });
+    assert(editorDeleteAttempt.status === 403, 'Editor deletion of project is BLOCKED (403 Forbidden)');
+
+    // Client deletes their own mistaken project -> 200 OK
+    const clientDelete = await dispatchRequest('DELETE', `/api/projects/${accidentalId}`, {
+      headers: { cookie: `token=${clientToken}` }
+    });
+    assert(clientDelete.status === 200, 'Client successfully deletes own mistaken project (200 OK)');
+
+    // Verification: project is gone
+    const fetchDeleted = await dispatchRequest('GET', `/api/projects/${accidentalId}`, {
+      headers: { cookie: `token=${clientToken}` }
+    });
+    assert(fetchDeleted.status === 404, 'Deleted project no longer exists in system (404 Not Found)');
 
     // ----------------------------------------------------
     // SUMMARY
