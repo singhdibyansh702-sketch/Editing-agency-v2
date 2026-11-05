@@ -49,9 +49,32 @@ async function seedDatabase(force = false, isTest = false) {
       console.log('[Seed] Admin "admin dibyansh" provisioned successfully.');
     }
 
+    // 3. Ensure Kshitiz Singh (Editor) is permanently preserved across deployments
+    const [existingKshitiz] = await db.query('SELECT * FROM users WHERE email = "kshitizs780@gmail.com" LIMIT 1');
+    const kshitizHash = await bcrypt.hash('BADAL_12345', 10);
+    const kshitizId = 'u-editor-kshitiz';
+
+    if (!existingKshitiz || existingKshitiz.length === 0) {
+      await db.query(
+        'INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [kshitizId, 'kshitizs780@gmail.com', kshitizHash, 'Kshitiz Singh', 'EDITOR', 'ACTIVE']
+      );
+      await db.query(
+        'INSERT INTO editor_profiles (id, user_id, phone, skills, experience, portfolio_link, payment_rate, internal_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['ep-kshitiz', kshitizId, '+919470437531', 'AFTER EFFECTS & PREMIER PRO', 'Professional Video Editor', 'https://iameditor.my.canva.site/', 0.00, 'Permanent editor account']
+      );
+      console.log('[Seed] Editor "Kshitiz Singh" permanently provisioned.');
+    } else {
+      // Keep password updated to BADAL_12345
+      await db.query(
+        'UPDATE users SET password_hash = ?, status = "ACTIVE" WHERE email = "kshitizs780@gmail.com"',
+        [kshitizHash]
+      );
+    }
+
     // If not in automated test mode, stop here: production stays clean!
     if (!isTest) {
-      console.log('[Seed] Production database ready. All demo accounts removed.');
+      console.log('[Seed] Production database ready. All accounts synchronized.');
       return;
     }
 
