@@ -72,6 +72,50 @@ async function seedDatabase(force = false, isTest = false) {
       );
     }
 
+    // 4. Ensure demo 1 (Editor) is permanently preserved across deployments
+    const [existingDemo1] = await db.query('SELECT * FROM users WHERE email = "demo1@gmail.com" LIMIT 1');
+    const demo1Hash = await bcrypt.hash('BADAL_12345', 10);
+    const demo1Id = 'u-editor-demo1';
+
+    if (!existingDemo1 || existingDemo1.length === 0) {
+      await db.query(
+        'INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [demo1Id, 'demo1@gmail.com', demo1Hash, 'demo 1', 'EDITOR', 'ACTIVE']
+      );
+      await db.query(
+        'INSERT INTO editor_profiles (id, user_id, phone, skills, experience, portfolio_link, payment_rate, internal_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['ep-demo1', demo1Id, '7977824229', 'capcut', 'Self-registered editor', 'https://docs.google.com/videos/d/1AZO6MMZzaqSopXy82mZYxvYSb13t0NhqEbhwxRUlCGk/edit?scene=id.p#scene=id.p', 0.00, 'Demo 1 editor account']
+      );
+      console.log('[Seed] Editor "demo 1" permanently provisioned.');
+    } else {
+      await db.query(
+        'UPDATE users SET password_hash = ?, status = "ACTIVE" WHERE email = "demo1@gmail.com"',
+        [demo1Hash]
+      );
+    }
+
+    // 5. Ensure demo 2 (Client) is permanently preserved across deployments
+    const [existingDemo2] = await db.query('SELECT * FROM users WHERE email = "demo2@gmail.com" LIMIT 1');
+    const demo2Hash = await bcrypt.hash('BADAL_12345', 10);
+    const demo2Id = 'u-client-demo2';
+
+    if (!existingDemo2 || existingDemo2.length === 0) {
+      await db.query(
+        'INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [demo2Id, 'demo2@gmail.com', demo2Hash, 'demo 2', 'CLIENT', 'ACTIVE']
+      );
+      await db.query(
+        'INSERT INTO client_profiles (id, user_id, phone, company_name, notes) VALUES (?, ?, ?, ?, ?)',
+        ['cp-demo2', demo2Id, '28920202', 'demo', 'Self-registered client']
+      );
+      console.log('[Seed] Client "demo 2" permanently provisioned.');
+    } else {
+      await db.query(
+        'UPDATE users SET password_hash = ?, status = "ACTIVE" WHERE email = "demo2@gmail.com"',
+        [demo2Hash]
+      );
+    }
+
     // If not in automated test mode, stop here: production stays clean!
     if (!isTest) {
       console.log('[Seed] Production database ready. All accounts synchronized.');
