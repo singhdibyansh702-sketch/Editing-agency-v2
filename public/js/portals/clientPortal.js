@@ -787,11 +787,6 @@ const ClientPortal = {
       Toast.error(err.message || 'Failed to submit payment.');
     }
   },
-      this.loadOverviewData();
-    } catch (err) {
-      console.error(err);
-    }
-  },
 
   confirmDeleteProject(projectId, projectTitle) {
     Modal.open({
