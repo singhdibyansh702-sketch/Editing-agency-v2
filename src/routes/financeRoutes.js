@@ -9,6 +9,8 @@ router.use(authenticate, requireAdmin);
 router.get('/overview', financeController.getFinancialOverview);
 router.get('/ledger', financeController.getLedger);
 router.post('/record-payment', financeController.recordPayment);
+router.post('/payments/:id/approve', financeController.approvePayment);
+router.post('/payments/:id/reject', financeController.rejectPayment);
 
 module.exports = router;
 

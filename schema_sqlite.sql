@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS `projects` (
   `deadline` TEXT DEFAULT NULL,
   `start_date` TEXT DEFAULT NULL,
   `final_delivery_link` TEXT DEFAULT NULL,
+  `client_approved_at` TEXT DEFAULT NULL,
+  `client_revision_notes` TEXT DEFAULT NULL,
+  `advance_payment_status` TEXT NOT NULL DEFAULT 'NONE',
   `created_at` TEXT NOT NULL DEFAULT (datetime('now')),
   `updated_at` TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (`client_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
@@ -95,6 +98,13 @@ CREATE TABLE IF NOT EXISTS `payments` (
   `payment_date` TEXT NOT NULL,
   `reference_id` TEXT DEFAULT NULL,
   `notes` TEXT DEFAULT NULL,
+  `status` TEXT NOT NULL DEFAULT 'VERIFIED',
+  `payer_user_id` TEXT DEFAULT NULL,
+  `receipt_url` TEXT DEFAULT NULL,
+  `deduction_amount` REAL NOT NULL DEFAULT 0.00,
+  `deduction_reason` TEXT DEFAULT NULL,
+  `verified_at` TEXT DEFAULT NULL,
+  `verified_by` TEXT DEFAULT NULL,
   `created_at` TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
 );

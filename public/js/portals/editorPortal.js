@@ -133,10 +133,40 @@ const EditorPortal = {
                     <div style="font-size:1.25rem;font-weight:800;color:var(--accent-success)">
                       ${State.formatCurrency(p.editor_payment, p.currency)}
                     </div>
+                    ${p.editor_deduction_amount > 0 ? `
+                      <div style="font-size:0.75rem;color:var(--accent-danger);font-weight:600;margin-top:2px">
+                        Deduction: -${State.formatCurrency(p.editor_deduction_amount, p.currency)}
+                      </div>
+                      <div style="font-size:0.72rem;color:var(--text-muted)">
+                        Reason: ${p.deduction_reason || 'Penalty/Late delivery'}
+                      </div>
+                      <div style="font-size:0.8rem;font-weight:700;color:#10b981;margin-top:2px">
+                        Net Paid: ${State.formatCurrency(p.editor_paid_amount, p.currency)} (${p.editor_payment_status || 'PAID'})
+                      </div>
+                    ` : `
+                      <div style="font-size:0.78rem;font-weight:700;color:${p.editor_payment_status === 'PAID' ? 'var(--accent-success)' : 'var(--text-muted)'};margin-top:2px">
+                        Payout Status: ${p.editor_payment_status || 'UNPAID'}
+                      </div>
+                    `}
                   </div>
                   <div>${State.getStatusBadge(p.status)}</div>
                 </div>
               </div>
+
+              ${p.status === 'Waiting for Editor' ? `
+                <div style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <i data-lucide="bell" style="color:var(--accent-primary);width:22px;height:22px;flex-shrink:0"></i>
+                    <div>
+                      <div style="font-weight:700;font-size:0.95rem;color:var(--text-primary)">New Project Assignment Waiting for Your Acceptance</div>
+                      <div style="font-size:0.82rem;color:var(--text-secondary)">Review raw assets, deadline, and agreed payout. Click below to accept the assignment and begin editing.</div>
+                    </div>
+                  </div>
+                  <button class="btn btn-sm btn-success" style="background:#10b981;color:#fff;font-weight:700;padding:8px 18px" onclick="EditorPortal.acceptProject('${p.id}')">
+                    <i data-lucide="play" style="width:16px;height:16px"></i> Accept & Start Working
+                  </button>
+                </div>
+              ` : ''}
 
               ${p.status === 'Revision Required' ? `
                 <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
@@ -245,6 +275,16 @@ const EditorPortal = {
       Toast.success('Cut submitted for review! Admin has been notified.');
       Modal.close();
       this.loadOverviewData();
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  async acceptProject(projectId) {
+    try {
+      const res = await API.post(`/projects/${projectId}/accept-assignment`, {});
+      Toast.success(res.message || 'Assignment accepted! Status updated to In Progress.');
+      await this.loadOverviewData();
     } catch (err) {
       console.error(err);
     }

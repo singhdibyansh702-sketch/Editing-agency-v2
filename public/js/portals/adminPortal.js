@@ -30,6 +30,9 @@ const AdminPortal = {
       <!-- Operational Metrics Grid -->
       <div id="admin-stats-grid" class="stats-grid"></div>
 
+      <!-- Action Required: Pending Client Payment Verifications -->
+      <div class="card" id="admin-pending-verifications-card" style="display:none;margin-bottom:20px"></div>
+
       <!-- Action Required: Pending Client Requests -->
       <div class="card" id="admin-pending-queue-card">
         <div class="card-header">
@@ -75,60 +78,96 @@ const AdminPortal = {
       const clients = clientRes.clients || [];
       const editors = editorRes.editors || [];
 
-      // Render Financial Snapshot Card
+      // Save financial data for period toggling
+      this.cachedFinancialOverview = finRes;
+      this.currentProfitPeriod = this.currentProfitPeriod || 'all';
+
+      // Render Financial Profit/Loss Snapshot Hub
       const finContainer = document.getElementById('admin-financial-snapshot');
       if (finContainer) {
-        finContainer.innerHTML = `
-          <div class="card" style="background:linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.06));border-color:rgba(37,99,235,0.25)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <i data-lucide="wallet" style="color:var(--accent-primary);width:20px;height:20px"></i>
-                <h3 style="font-size:1.05rem;font-weight:700">Financial Snapshot & Realized Agency Profit</h3>
+        this.renderProfitLossSnapshot(finContainer);
+      }
+
+      // Render Pending Client Payment Verifications Queue (if any)
+      const pendingVerifications = finRes.pendingVerifications || [];
+      const pendingVerifyContainer = document.getElementById('admin-pending-verifications-card');
+      if (pendingVerifyContainer) {
+        if (pendingVerifications.length > 0) {
+          pendingVerifyContainer.style.display = 'block';
+          pendingVerifyContainer.innerHTML = `
+            <div class="card-header" style="background:rgba(245,158,11,0.08);border-bottom:1px solid rgba(245,158,11,0.2)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <i data-lucide="alert-circle" style="color:var(--accent-warning);width:20px;height:20px"></i>
+                <div>
+                  <h2 class="card-title" style="color:var(--accent-warning)">Pending Client Payment Verifications</h2>
+                  <p class="card-subtitle">Clients have submitted payment with UTR reference. Verify receipt to approve.</p>
+                </div>
               </div>
-              <div style="display:flex;gap:8px">
-                <span class="badge badge-approved" style="font-size:0.8rem">USD ($) & INR (₹) Dual Ledger</span>
-              </div>
+              <span class="badge badge-warning" style="font-weight:700">${pendingVerifications.length} Awaiting Verification</span>
             </div>
-            
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px">
-              <div style="padding:14px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-color)">
-                <div class="stat-title">Realized Profit (USD)</div>
-                <div style="font-size:1.45rem;font-weight:800;color:var(--accent-success)">
-                  $${(stats.USD.realized_profit || 0).toLocaleString()}
-                </div>
-                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
-                  Received: $${(stats.USD.client_payments_received || 0).toLocaleString()} | Paid: $${(stats.USD.editor_payments_made || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div style="padding:14px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-color)">
-                <div class="stat-title">Realized Profit (INR)</div>
-                <div style="font-size:1.45rem;font-weight:800;color:var(--accent-success)">
-                  ₹${(stats.INR.realized_profit || 0).toLocaleString()}
-                </div>
-                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
-                  Received: ₹${(stats.INR.client_payments_received || 0).toLocaleString()} | Paid: ₹${(stats.INR.editor_payments_made || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div style="padding:14px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-color)">
-                <div class="stat-title">Outstanding Client Receivables</div>
-                <div style="font-size:1.3rem;font-weight:700;color:var(--accent-warning)">
-                  $${(stats.USD.outstanding_client_receivables || 0).toLocaleString()} / ₹${(stats.INR.outstanding_client_receivables || 0).toLocaleString()}
-                </div>
-                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">Pending client payments</div>
-              </div>
-
-              <div style="padding:14px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-color)">
-                <div class="stat-title">Outstanding Editor Payables</div>
-                <div style="font-size:1.3rem;font-weight:700;color:var(--accent-info)">
-                  $${(stats.USD.outstanding_editor_payables || 0).toLocaleString()} / ₹${(stats.INR.outstanding_editor_payables || 0).toLocaleString()}
-                </div>
-                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">Pending editor payouts</div>
-              </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Project</th>
+                    <th>Client</th>
+                    <th>Amount Submitted</th>
+                    <th>Payment Method</th>
+                    <th>UTR / Reference ID</th>
+                    <th>Proof</th>
+                    <th style="text-align:right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pendingVerifications.map(pv => `
+                    <tr>
+                      <td>
+                        <div style="font-weight:700">${pv.project_title}</div>
+                        <span style="font-size:0.75rem;color:var(--text-muted)">${pv.project_code}</span>
+                      </td>
+                      <td>
+                        <div style="font-weight:600">${pv.client_name}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)">${pv.client_email}</div>
+                      </td>
+                      <td>
+                        <strong style="color:var(--accent-primary);font-size:1.05rem">
+                          ${State.formatCurrency(pv.amount, pv.currency || pv.project_currency)}
+                        </strong>
+                      </td>
+                      <td>
+                        <span class="badge badge-progress">${pv.payment_method}</span>
+                      </td>
+                      <td>
+                        <span style="font-family:monospace;font-weight:700;background:var(--bg-tertiary);padding:3px 8px;border-radius:4px">
+                          ${pv.reference_id || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        ${pv.receipt_url ? `
+                          <a href="${pv.receipt_url}" target="_blank" class="btn btn-sm btn-outline">
+                            <i data-lucide="external-link" style="width:12px;height:12px"></i> View Receipt
+                          </a>
+                        ` : `<span style="font-size:0.75rem;color:var(--text-muted)">No link</span>`}
+                      </td>
+                      <td style="text-align:right">
+                        <div style="display:flex;gap:6px;justify-content:flex-end">
+                          <button class="btn btn-sm btn-success" onclick="AdminPortal.approveClientPayment('${pv.id}', '${pv.project_id}', '${(pv.project_title || '').replace(/'/g, "\\'")}')">
+                            <i data-lucide="check" style="width:14px;height:14px"></i> Approve
+                          </button>
+                          <button class="btn btn-sm btn-outline" style="color:var(--accent-danger);border-color:rgba(239,68,68,0.3)" onclick="AdminPortal.rejectClientPayment('${pv.id}')">
+                            <i data-lucide="x" style="width:14px;height:14px"></i> Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
             </div>
-          </div>
-        `;
+          `;
+        } else {
+          pendingVerifyContainer.style.display = 'none';
+        }
       }
 
       // Operational Metrics
@@ -432,6 +471,9 @@ const AdminPortal = {
                         <button class="btn btn-sm btn-outline" onclick="AdminPortal.openProjectDetailsModal('${p.id}')" title="Details">
                           <i data-lucide="eye" style="width:14px;height:14px"></i>
                         </button>
+                        <button class="btn btn-sm btn-outline" onclick="AdminPortal.openEditProjectModal('${p.id}')" title="Edit Project">
+                          <i data-lucide="edit-3" style="width:14px;height:14px"></i>
+                        </button>
                         ${p.status === 'Pending Approval' ? `
                           <button class="btn btn-sm btn-primary" onclick="AdminPortal.openReviewQuoteModal('${p.id}')">
                             Quote
@@ -463,6 +505,370 @@ const AdminPortal = {
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       console.error('Error fetching projects:', err);
+    }
+  },
+
+  currentProfitPeriod: 'all',
+  cachedFinancialOverview: null,
+
+  setProfitPeriod(period) {
+    this.currentProfitPeriod = period;
+    const container = document.getElementById('admin-financial-snapshot');
+    if (container) {
+      this.renderProfitLossSnapshot(container);
+    }
+  },
+
+  renderProfitLossSnapshot(container) {
+    if (!container) container = document.getElementById('admin-financial-snapshot');
+    if (!container || !this.cachedFinancialOverview) return;
+
+    const fin = this.cachedFinancialOverview;
+    const period = this.currentProfitPeriod || 'all';
+    const perf = fin.performance && fin.performance[period] ? fin.performance[period] : {
+      USD: { client_received: 0, editor_paid: 0, net_profit_loss: 0, margin_pct: 0, is_loss: false },
+      INR: { client_received: 0, editor_paid: 0, net_profit_loss: 0, margin_pct: 0, is_loss: false }
+    };
+    const allStats = fin.stats || { USD: {}, INR: {} };
+
+    const periodLabels = {
+      day: 'Today (1 Day)',
+      week: 'This Week (7 Days)',
+      month: 'This Month (30 Days)',
+      year: 'This Year (1 Year)',
+      three_year: 'Last 3 Years',
+      all: 'All Time'
+    };
+
+    container.innerHTML = `
+      <div class="card" style="background:linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.06));border-color:rgba(37,99,235,0.25);margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--accent-primary);display:flex;align-items:center;justify-content:center;color:#fff">
+              <i data-lucide="trending-up" style="width:20px;height:20px"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.1rem;font-weight:700">Agency Profit & Loss Performance Hub</h3>
+              <p style="font-size:0.8rem;color:var(--text-muted);margin:0">Real-time revenue, editor costs, and net margin calculation.</p>
+            </div>
+          </div>
+
+          <!-- Time Period Selectors -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-lg)">
+            ${['day', 'week', 'month', 'year', 'three_year', 'all'].map(pKey => `
+              <button 
+                type="button" 
+                class="btn btn-sm ${period === pKey ? 'btn-primary' : 'btn-outline'}" 
+                style="padding:4px 10px;font-size:0.75rem;font-weight:600;border:none;border-radius:var(--radius-md)" 
+                onclick="AdminPortal.setProfitPeriod('${pKey}')">
+                ${periodLabels[pKey]}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="font-size:0.82rem;font-weight:600;color:var(--text-secondary);margin-bottom:12px">
+          Showing Performance for: <strong style="color:var(--text-primary)">${periodLabels[period]}</strong>
+        </div>
+
+        <!-- Profit / Loss Cards Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px">
+          <!-- INR Performance Card -->
+          <div style="padding:16px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid ${perf.INR.is_loss ? 'rgba(239,68,68,0.4)' : 'var(--border-color)'};box-shadow:${perf.INR.is_loss ? '0 0 12px rgba(239,68,68,0.1)' : 'none'}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="stat-title" style="font-size:0.85rem;font-weight:700">INR (₹) Net Profit / Loss</span>
+              <span class="badge ${perf.INR.is_loss ? 'badge-cancelled' : 'badge-approved'}" style="font-size:0.75rem;font-weight:700">
+                ${perf.INR.is_loss ? 'NET LOSS' : 'NET PROFIT'}
+              </span>
+            </div>
+            
+            <div style="font-size:1.65rem;font-weight:800;color:${perf.INR.is_loss ? 'var(--accent-danger)' : 'var(--accent-success)'};margin:8px 0">
+              ${perf.INR.net_profit_loss >= 0 ? '+' : ''}₹${Math.abs(perf.INR.net_profit_loss).toLocaleString()}
+              <span style="font-size:0.85rem;font-weight:600;color:var(--text-secondary)">(${perf.INR.margin_pct}%)</span>
+            </div>
+
+            <div style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;padding-top:8px;border-top:1px solid var(--border-subtle)">
+              <div style="display:flex;justify-content:space-between">
+                <span>Client Revenue Received:</span>
+                <strong style="color:var(--accent-primary)">₹${perf.INR.client_received.toLocaleString()}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:2px">
+                <span>Editor Payouts Sent:</span>
+                <strong style="color:var(--text-primary)">₹${perf.INR.editor_paid.toLocaleString()}</strong>
+              </div>
+              ${perf.INR.is_loss ? `
+                <div style="font-size:0.75rem;color:var(--accent-danger);margin-top:6px;font-weight:600">
+                  <i data-lucide="alert-triangle" style="width:12px;height:12px;display:inline"></i> Editor payouts exceeded client revenue in this timeframe!
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- USD Performance Card -->
+          <div style="padding:16px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid ${perf.USD.is_loss ? 'rgba(239,68,68,0.4)' : 'var(--border-color)'};box-shadow:${perf.USD.is_loss ? '0 0 12px rgba(239,68,68,0.1)' : 'none'}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="stat-title" style="font-size:0.85rem;font-weight:700">USD ($) Net Profit / Loss</span>
+              <span class="badge ${perf.USD.is_loss ? 'badge-cancelled' : 'badge-approved'}" style="font-size:0.75rem;font-weight:700">
+                ${perf.USD.is_loss ? 'NET LOSS' : 'NET PROFIT'}
+              </span>
+            </div>
+            
+            <div style="font-size:1.65rem;font-weight:800;color:${perf.USD.is_loss ? 'var(--accent-danger)' : 'var(--accent-success)'};margin:8px 0">
+              ${perf.USD.net_profit_loss >= 0 ? '+' : ''}$${Math.abs(perf.USD.net_profit_loss).toLocaleString()}
+              <span style="font-size:0.85rem;font-weight:600;color:var(--text-secondary)">(${perf.USD.margin_pct}%)</span>
+            </div>
+
+            <div style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;padding-top:8px;border-top:1px solid var(--border-subtle)">
+              <div style="display:flex;justify-content:space-between">
+                <span>Client Revenue Received:</span>
+                <strong style="color:var(--accent-primary)">$${perf.USD.client_received.toLocaleString()}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:2px">
+                <span>Editor Payouts Sent:</span>
+                <strong style="color:var(--text-primary)">$${perf.USD.editor_paid.toLocaleString()}</strong>
+              </div>
+              ${perf.USD.is_loss ? `
+                <div style="font-size:0.75rem;color:var(--accent-danger);margin-top:6px;font-weight:600">
+                  <i data-lucide="alert-triangle" style="width:12px;height:12px;display:inline"></i> Editor payouts exceeded client revenue in this timeframe!
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- All-Time Pipeline Receivables & Payables -->
+          <div style="padding:16px;background-color:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-color);display:flex;flex-direction:column;justify-content:space-between">
+            <div>
+              <div class="stat-title" style="font-size:0.85rem;font-weight:700">Outstanding Receivables & Payables</div>
+              <div style="margin-top:8px;font-size:0.82rem">
+                <div style="display:flex;justify-content:space-between;padding:4px 0">
+                  <span style="color:var(--text-muted)">Uncollected Receivables:</span>
+                  <strong style="color:var(--accent-warning)">$${allStats.USD?.outstanding_client_receivables?.toLocaleString() || 0} / ₹${allStats.INR?.outstanding_client_receivables?.toLocaleString() || 0}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border-subtle)">
+                  <span style="color:var(--text-muted)">Pending Editor Payables:</span>
+                  <strong style="color:var(--accent-info)">$${allStats.USD?.outstanding_editor_payables?.toLocaleString() || 0} / ₹${allStats.INR?.outstanding_editor_payables?.toLocaleString() || 0}</strong>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <a href="#finance" class="btn btn-sm btn-outline" style="width:100%;text-align:center">
+                Open Full Financial Ledger <i data-lucide="arrow-right" style="width:12px;height:12px;display:inline"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+  },
+
+  async approveClientPayment(paymentId, projectId, projectTitle) {
+    if (!confirm(`Are you sure you want to verify and approve this client payment?`)) return;
+    try {
+      const res = await API.post(`/finance/payments/${paymentId}/approve`, {});
+      Toast.success(res.message || 'Client payment verified and approved!');
+      
+      // Prompt admin to record editor payout directly (Requirement 5)
+      Modal.open({
+        title: 'Client Payment Verified!',
+        bodyHtml: `
+          <div style="text-align:center;padding:10px 0">
+            <div style="width:50px;height:50px;border-radius:50%;background:rgba(16,185,129,0.15);color:var(--accent-success);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+              <i data-lucide="check" style="width:28px;height:28px"></i>
+            </div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Payment Credited to Ledger!</h3>
+            <p style="font-size:0.88rem;color:var(--text-secondary);max-width:420px;margin:0 auto">
+              Client payment for <strong>"${projectTitle || 'Project'}"</strong> has been verified. Would you like to record the editor payout for this project now?
+            </p>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary" onclick="Modal.close(); AdminPortal.loadOverviewData();">Maybe Later</button>
+          <button class="btn btn-primary" onclick="Modal.close(); AdminPortal.openRecordPaymentModal('${projectId}', 'EDITOR_PAYMENT');">
+            Record Editor Payout Now <i data-lucide="arrow-right" style="width:14px;height:14px"></i>
+          </button>
+        `
+      });
+
+      await this.loadOverviewData();
+    } catch (err) {
+      console.error(err);
+      Toast.error(err.message || 'Failed to approve payment.');
+    }
+  },
+
+  async rejectClientPayment(paymentId) {
+    const reason = prompt('Please enter reason for payment rejection (e.g. Invalid UTR, transaction not found in bank statement):');
+    if (reason === null) return;
+    try {
+      const res = await API.post(`/finance/payments/${paymentId}/reject`, { reason });
+      Toast.info(res.message || 'Payment marked as rejected.');
+      await this.loadOverviewData();
+    } catch (err) {
+      console.error(err);
+      Toast.error(err.message || 'Failed to reject payment.');
+    }
+  },
+
+  async openEditProjectModal(projectId) {
+    try {
+      const [projData, editorData] = await Promise.all([
+        API.get(`/projects/${projectId}`),
+        API.get('/users/editors')
+      ]);
+
+      const p = projData.project;
+      const editors = editorData.editors || [];
+
+      Modal.open({
+        title: `Edit Project Details (${p.project_code})`,
+        size: 'lg',
+        bodyHtml: `
+          <form id="admin-edit-project-form">
+            <div class="form-group">
+              <label class="form-label">Project Title *</label>
+              <input type="text" id="edit-proj-title" class="form-control" value="${p.title || ''}" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Video Type / Category *</label>
+                <select id="edit-proj-type" class="form-control" required>
+                  <option value="YouTube Explainer" ${p.video_type === 'YouTube Explainer' ? 'selected' : ''}>YouTube Explainer / Deep-Dive</option>
+                  <option value="Reels / TikTok" ${p.video_type === 'Reels / TikTok' ? 'selected' : ''}>Reels / TikTok / Shorts (9:16 Vertical)</option>
+                  <option value="SaaS Showcase" ${p.video_type === 'SaaS Showcase' ? 'selected' : ''}>SaaS Product Showcase / Walkthrough</option>
+                  <option value="Commercial" ${p.video_type === 'Commercial' ? 'selected' : ''}>Commercial / Brand Advertisement</option>
+                  <option value="Documentary" ${p.video_type === 'Documentary' ? 'selected' : ''}>Documentary / Cinematic Film</option>
+                  <option value="Podcast" ${p.video_type === 'Podcast' ? 'selected' : ''}>Podcast Video Multi-Cam Edit</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Project Production Status *</label>
+                <select id="edit-proj-status" class="form-control" required>
+                  <option value="Pending Approval" ${p.status === 'Pending Approval' ? 'selected' : ''}>Pending Approval</option>
+                  <option value="Waiting for Editor" ${p.status === 'Waiting for Editor' ? 'selected' : ''}>Waiting for Editor to Accept</option>
+                  <option value="In Progress" ${p.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                  <option value="Submitted for Review" ${p.status === 'Submitted for Review' ? 'selected' : ''}>Submitted for Review</option>
+                  <option value="Revision Required" ${p.status === 'Revision Required' ? 'selected' : ''}>Revision Required</option>
+                  <option value="Approved" ${p.status === 'Approved' ? 'selected' : ''}>Approved</option>
+                  <option value="Completed" ${p.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                  <option value="Cancelled" ${p.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Client Quoted Price (${p.currency === 'INR' ? '₹' : '$'}) *</label>
+                <input type="number" step="0.01" id="edit-proj-client-price" class="form-control" value="${p.client_price || 0}" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Editor Agreed Payout (${p.currency === 'INR' ? '₹' : '$'})</label>
+                <input type="number" step="0.01" id="edit-proj-editor-payment" class="form-control" value="${p.editor_payment || 0}">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Assign Video Editor</label>
+                <select id="edit-proj-editor" class="form-control">
+                  <option value="">— Unassigned —</option>
+                  ${editors.map(e => `
+                    <option value="${e.id}" ${p.editor_id === e.id ? 'selected' : ''}>
+                      ${e.name} (${e.profile?.skills || 'Editor'})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Target Completion Deadline</label>
+                <input type="date" id="edit-proj-deadline" class="form-control" value="${p.deadline ? p.deadline.slice(0, 10) : ''}">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Raw Footage Google Drive / Dropbox Link</label>
+              <input type="url" id="edit-proj-footage" class="form-control" value="${p.reference_link || ''}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Spec Doc / Script Link</label>
+              <input type="url" id="edit-proj-spec" class="form-control" value="${p.spec_doc_url || ''}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Editing Requirements / Brief</label>
+              <textarea id="edit-proj-instructions" class="form-control" rows="3">${p.editing_requirements || p.description || ''}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Final 4K Master Deliverable Link (When Complete)</label>
+              <input type="url" id="edit-proj-final-link" class="form-control" value="${p.final_delivery_link || ''}" placeholder="https://drive.google.com/...">
+            </div>
+          </form>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+          <button class="btn btn-primary" onclick="AdminPortal.saveProjectEdit('${projectId}')">
+            Save Changes
+          </button>
+        `
+      });
+      if (window.lucide) window.lucide.createIcons();
+    } catch (err) {
+      console.error(err);
+      Toast.error('Failed to open edit modal.');
+    }
+  },
+
+  async saveProjectEdit(projectId) {
+    const title = document.getElementById('edit-proj-title')?.value?.trim();
+    const video_type = document.getElementById('edit-proj-type')?.value;
+    const status = document.getElementById('edit-proj-status')?.value;
+    const client_price = parseFloat(document.getElementById('edit-proj-client-price')?.value || 0);
+    const editor_payment = parseFloat(document.getElementById('edit-proj-editor-payment')?.value || 0);
+    const editor_id = document.getElementById('edit-proj-editor')?.value || null;
+    const deadline = document.getElementById('edit-proj-deadline')?.value || null;
+    const reference_link = document.getElementById('edit-proj-footage')?.value?.trim() || null;
+    const spec_doc_url = document.getElementById('edit-proj-spec')?.value?.trim() || null;
+    const editing_requirements = document.getElementById('edit-proj-instructions')?.value?.trim() || null;
+    const final_delivery_link = document.getElementById('edit-proj-final-link')?.value?.trim() || null;
+
+    if (!title || !video_type) {
+      Toast.error('Project title and video type are required.');
+      return;
+    }
+
+    try {
+      const res = await API.put(`/projects/${projectId}`, {
+        title,
+        video_type,
+        status,
+        client_price,
+        editor_payment,
+        editor_id,
+        deadline,
+        reference_link,
+        spec_doc_url,
+        editing_requirements,
+        final_delivery_link
+      });
+
+      Modal.close();
+      Toast.success(res.message || 'Project updated successfully!');
+      if (typeof this.fetchAndRenderProjectsTable === 'function') {
+        this.fetchAndRenderProjectsTable();
+      }
+      if (typeof this.loadOverviewData === 'function') {
+        this.loadOverviewData();
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.error(err.message || 'Failed to save changes.');
     }
   },
 
@@ -986,7 +1392,12 @@ const AdminPortal = {
             `}
           </div>
         `,
-        footerHtml: `<button class="btn btn-secondary" onclick="Modal.close()">Close</button>`
+        footerHtml: `
+          <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+          <button class="btn btn-primary" onclick="Modal.close(); AdminPortal.openEditProjectModal('${projectId}')">
+            <i data-lucide="edit-3" style="width:14px;height:14px"></i> Edit Project
+          </button>
+        `
       });
     } catch (err) {
       console.error(err);
@@ -1703,10 +2114,11 @@ const AdminPortal = {
   // ==========================================
   // RECORD PAYMENT MODAL (MULTI-METHOD & CURRENCY)
   // ==========================================
-  async openRecordPaymentModal(preselectedProjectId = null) {
+  async openRecordPaymentModal(preselectedProjectId = null, defaultType = 'CLIENT_PAYMENT') {
     try {
       const projRes = await API.get('/projects');
       const projects = projRes.projects || [];
+      const preselected = projects.find(p => p.id === preselectedProjectId);
 
       Modal.open({
         title: 'Record Financial Transaction',
@@ -1718,7 +2130,7 @@ const AdminPortal = {
               <select id="pmt-project-id" class="form-control" required onchange="AdminPortal.onPaymentProjectChange(this.value)">
                 <option value="">Choose project...</option>
                 ${projects.map(p => `
-                  <option value="${p.id}" data-currency="${p.currency}" ${preselectedProjectId === p.id ? 'selected' : ''}>
+                  <option value="${p.id}" data-currency="${p.currency}" data-editor-pay="${p.editor_payment || 0}" data-client-price="${p.client_price || 0}" ${preselectedProjectId === p.id ? 'selected' : ''}>
                     ${p.project_code}: ${p.title} (${p.currency})
                   </option>
                 `).join('')}
@@ -1728,15 +2140,42 @@ const AdminPortal = {
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Payment Category *</label>
-                <select id="pmt-type" class="form-control" required>
-                  <option value="CLIENT_PAYMENT">Client Payment (Inflow / Receivable)</option>
-                  <option value="EDITOR_PAYMENT">Editor Payout (Outflow / Payable)</option>
+                <select id="pmt-type" class="form-control" required onchange="AdminPortal.onPaymentTypeChange()">
+                  <option value="CLIENT_PAYMENT" ${defaultType === 'CLIENT_PAYMENT' ? 'selected' : ''}>Client Payment (Inflow / Receivable)</option>
+                  <option value="EDITOR_PAYMENT" ${defaultType === 'EDITOR_PAYMENT' ? 'selected' : ''}>Editor Payout (Outflow / Payable)</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label class="form-label">Amount *</label>
-                <input type="number" step="0.01" id="pmt-amount" class="form-control" placeholder="0.00" required>
+                <label class="form-label">Amount to Pay *</label>
+                <input type="number" step="0.01" id="pmt-amount" class="form-control" placeholder="0.00" value="${defaultType === 'EDITOR_PAYMENT' && preselected ? preselected.editor_payment : ''}" required>
+              </div>
+            </div>
+
+            <!-- Editor Payout Penalty / Deduction Section (Requirement 6) -->
+            <div id="editor-deduction-group" style="display:${defaultType === 'EDITOR_PAYMENT' ? 'block' : 'none'};background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px">
+              <div style="font-size:0.8rem;font-weight:700;color:var(--accent-danger);margin-bottom:6px">
+                <i data-lucide="scissors" style="width:14px;height:14px;display:inline;vertical-align:middle"></i>
+                Editor Penalty or Late Deduction (Optional)
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:8px">
+                If paying less than agreed rate due to late delivery or revisions, specify deduction here so the project is marked as properly PAID with clear explanation.
+              </div>
+              <div class="form-row">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Deduction Amount (${preselected?.currency === 'INR' ? '₹' : '$'})</label>
+                  <input type="number" step="0.01" id="pmt-deduction-amount" class="form-control" placeholder="0.00">
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Deduction Reason</label>
+                  <select id="pmt-deduction-reason" class="form-control">
+                    <option value="Late Delivery Penalty">Late Delivery Penalty</option>
+                    <option value="Incomplete Initial Revision">Incomplete Initial Revision</option>
+                    <option value="Quality Adjustment">Quality Adjustment</option>
+                    <option value="Mutual Agreement">Mutual Agreement</option>
+                    <option value="Other">Other Penalty / Adjustment</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1744,8 +2183,8 @@ const AdminPortal = {
               <div class="form-group">
                 <label class="form-label">Currency *</label>
                 <select id="pmt-currency" class="form-control">
-                  <option value="USD">USD ($)</option>
-                  <option value="INR">INR (₹)</option>
+                  <option value="USD" ${preselected?.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                  <option value="INR" ${preselected?.currency === 'INR' ? 'selected' : ''}>INR (₹)</option>
                 </select>
               </div>
 
@@ -1776,7 +2215,7 @@ const AdminPortal = {
 
             <div class="form-group">
               <label class="form-label">Notes (Optional)</label>
-              <textarea id="pmt-notes" class="form-control" placeholder="e.g. 50% advance deposit or milestone release"></textarea>
+              <textarea id="pmt-notes" class="form-control" placeholder="e.g. Full settlement, 50% advance deposit, or bonus"></textarea>
             </div>
           </form>
         `,
@@ -1785,8 +2224,18 @@ const AdminPortal = {
           <button class="btn btn-primary" onclick="AdminPortal.submitRecordPayment()">Save Transaction</button>
         `
       });
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  onPaymentTypeChange() {
+    const type = document.getElementById('pmt-type')?.value;
+    const dedGroup = document.getElementById('editor-deduction-group');
+    if (dedGroup) {
+      dedGroup.style.display = type === 'EDITOR_PAYMENT' ? 'block' : 'none';
+      if (window.lucide) window.lucide.createIcons();
     }
   },
 
@@ -1797,6 +2246,14 @@ const AdminPortal = {
     if (curr) {
       const currSelect = document.getElementById('pmt-currency');
       if (currSelect) currSelect.value = curr;
+    }
+    const type = document.getElementById('pmt-type')?.value;
+    if (type === 'EDITOR_PAYMENT') {
+      const ePay = opt?.getAttribute('data-editor-pay');
+      if (ePay) {
+        const amtInput = document.getElementById('pmt-amount');
+        if (amtInput && !amtInput.value) amtInput.value = ePay;
+      }
     }
   },
 
@@ -1810,6 +2267,8 @@ const AdminPortal = {
       const reference_id = document.getElementById('pmt-ref')?.value;
       const payment_date = document.getElementById('pmt-date')?.value;
       const notes = document.getElementById('pmt-notes')?.value;
+      const deduction_amount = parseFloat(document.getElementById('pmt-deduction-amount')?.value || 0);
+      const deduction_reason = document.getElementById('pmt-deduction-reason')?.value || null;
 
       if (!project_id || !type || amount <= 0 || !payment_method) {
         Toast.error('Please complete all required payment fields.');
@@ -1824,15 +2283,20 @@ const AdminPortal = {
         payment_method,
         reference_id,
         payment_date,
-        notes
+        notes,
+        deduction_amount,
+        deduction_reason
       });
 
       Toast.success('Transaction recorded in agency ledger successfully!');
       Modal.close();
       this.loadOverviewData();
-      this.loadLedgerData();
+      if (typeof this.loadLedgerData === 'function') {
+        this.loadLedgerData();
+      }
     } catch (err) {
       console.error(err);
+      Toast.error(err.message || 'Failed to record payment.');
     }
   },
 

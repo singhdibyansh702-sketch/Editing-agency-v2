@@ -49,13 +49,14 @@ const State = {
     let badgeClass = 'badge-pending';
     
     if (s === 'In Progress' || s === 'Assigned') badgeClass = 'badge-progress';
-    else if (s === 'Submitted for Review') badgeClass = 'badge-review';
+    else if (s === 'Waiting for Editor') badgeClass = 'badge-review';
+    else if (s === 'Submitted for Review' || s === 'PENDING_VERIFICATION' || s === 'Payment Submitted') badgeClass = 'badge-review';
     else if (s === 'Approved' || s === 'Completed' || s === 'PAID') badgeClass = 'badge-approved';
-    else if (s === 'Revision Required') badgeClass = 'badge-revision';
+    else if (s === 'Revision Required' || s === 'Revision Requested') badgeClass = 'badge-revision';
     else if (s === 'PARTIALLY_PAID') badgeClass = 'badge-partial';
-    else if (s === 'Cancelled' || s === 'UNPAID') badgeClass = 'badge-cancelled';
+    else if (s === 'Cancelled' || s === 'UNPAID' || s === 'REJECTED') badgeClass = 'badge-cancelled';
 
-    return `<span class="badge ${badgeClass}">${s}</span>`;
+    return `<span class="badge ${badgeClass}">${s === 'PENDING_VERIFICATION' ? 'Verification Pending' : s}</span>`;
   }
 };
 

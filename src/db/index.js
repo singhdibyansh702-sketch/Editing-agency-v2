@@ -225,6 +225,39 @@ async function initDatabase() {
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
     await sqliteDb.exec(schemaSql);
   }
+
+  // Safe migration for column additions on existing databases
+  await migrateSchema();
+}
+
+async function migrateSchema() {
+  const alterStatements = [
+    // payments table additions
+    `ALTER TABLE payments ADD COLUMN status TEXT NOT NULL DEFAULT 'VERIFIED'`,
+    `ALTER TABLE payments ADD COLUMN payer_user_id TEXT DEFAULT NULL`,
+    `ALTER TABLE payments ADD COLUMN receipt_url TEXT DEFAULT NULL`,
+    `ALTER TABLE payments ADD COLUMN deduction_amount REAL NOT NULL DEFAULT 0.00`,
+    `ALTER TABLE payments ADD COLUMN deduction_reason TEXT DEFAULT NULL`,
+    `ALTER TABLE payments ADD COLUMN verified_at TEXT DEFAULT NULL`,
+    `ALTER TABLE payments ADD COLUMN verified_by TEXT DEFAULT NULL`,
+
+    // projects table additions
+    `ALTER TABLE projects ADD COLUMN client_approved_at TEXT DEFAULT NULL`,
+    `ALTER TABLE projects ADD COLUMN client_revision_notes TEXT DEFAULT NULL`,
+    `ALTER TABLE projects ADD COLUMN advance_payment_status TEXT NOT NULL DEFAULT 'NONE'`
+  ];
+
+  for (const stmt of alterStatements) {
+    try {
+      await query(stmt);
+    } catch {
+      // Column may already exist
+    }
+  }
+
+  try {
+    await query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status)`);
+  } catch {}
 }
 
 /**

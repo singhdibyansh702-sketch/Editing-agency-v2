@@ -68,6 +68,9 @@ CREATE TABLE IF NOT EXISTS `projects` (
   `deadline` DATETIME DEFAULT NULL,
   `start_date` DATETIME DEFAULT NULL,
   `final_delivery_link` VARCHAR(1000) DEFAULT NULL,
+  `client_approved_at` DATETIME DEFAULT NULL,
+  `client_revision_notes` TEXT DEFAULT NULL,
+  `advance_payment_status` VARCHAR(50) NOT NULL DEFAULT 'NONE',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -106,10 +109,18 @@ CREATE TABLE IF NOT EXISTS `payments` (
   `payment_date` DATETIME NOT NULL,
   `reference_id` VARCHAR(255) DEFAULT NULL,
   `notes` TEXT DEFAULT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'VERIFIED',
+  `payer_user_id` VARCHAR(36) DEFAULT NULL,
+  `receipt_url` VARCHAR(1000) DEFAULT NULL,
+  `deduction_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `deduction_reason` TEXT DEFAULT NULL,
+  `verified_at` DATETIME DEFAULT NULL,
+  `verified_by` VARCHAR(36) DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   INDEX `idx_payments_project` (`project_id`),
   INDEX `idx_payments_type` (`type`),
+  INDEX `idx_payments_status` (`status`),
   CONSTRAINT `fk_payments_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

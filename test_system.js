@@ -476,6 +476,192 @@ async function runTests() {
     assert(fetchDeleted.status === 404, 'Deleted project no longer exists in system (404 Not Found)');
 
     // ----------------------------------------------------
+    // TEST 8: Full End-to-End Workflow: Project Editing, Waiting for Editor, Client Revision/Approval, UTR Payment & Deduction
+    // ----------------------------------------------------
+    console.log('\n--- Test Group 8: Comprehensive 7-Feature Lifecycle Verification ---');
+
+    // 1. Client creates a project with Advance Payment
+    const advProject = await dispatchRequest('POST', '/api/projects', {
+      headers: { cookie: `token=${clientToken}` },
+      body: {
+        title: 'Brand Launch Commercial',
+        video_type: 'Commercial / Ad',
+        currency: 'USD',
+        client_budget: 1200.00,
+        reference_link: 'https://drive.google.com/drive/folders/brand-footage-raw',
+        editing_requirements: 'Cinema grade colors with sound design and SFX',
+        advance_payment: {
+          amount: 300.00,
+          payment_method: 'Stripe / Card',
+          reference_id: 'ADV-STRIPE-4421',
+          notes: '25% advance payment submitted'
+        }
+      }
+    });
+    assert(advProject.status === 201 && advProject.data.project.status === 'Pending Approval', 'Client creates project with Advance Payment (Pending Approval)');
+    const advProjectId = advProject.data.project.id;
+
+    // 2. Client edits project while still Pending Approval
+    const clientPreEdit = await dispatchRequest('PUT', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${clientToken}` },
+      body: {
+        title: 'Brand Launch Commercial (Updated Requirements)',
+        client_budget: 1300.00,
+        editing_requirements: 'Updated: include 3 aspect ratio cuts (16:9, 9:16, 1:1)'
+      }
+    });
+    assert(clientPreEdit.status === 200 && clientPreEdit.data.project.title.includes('Updated Requirements'), 'Client successfully edits request while Pending Approval');
+
+    // 3. Admin reviews, quotes, and assigns Kshitiz Singh -> status becomes 'Waiting for Editor'
+    const adminQuoteAdv = await dispatchRequest('POST', `/api/projects/${advProjectId}/quote`, {
+      headers: { cookie: `token=${adminToken}` },
+      body: {
+        client_price: 1300.00,
+        admin_quote_note: 'Approved with 3 format renders included',
+        editor_id: 'u-editor-kshitiz',
+        editor_payment: 700.00,
+        deadline: new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString()
+      }
+    });
+    assert(adminQuoteAdv.status === 200, 'Admin approves and quotes project');
+    
+    // Verify status is 'Waiting for Editor'
+    const checkWaitEditor = await dispatchRequest('GET', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(checkWaitEditor.data.project.status === 'Waiting for Editor', 'Project transitions to "Waiting for Editor" state');
+
+    // 4. Client attempts to edit AFTER approval -> must be rejected with 403
+    const clientPostEditAttempt = await dispatchRequest('PUT', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${clientToken}` },
+      body: { title: 'Unauthorized Post-Approval Change' }
+    });
+    assert(clientPostEditAttempt.status === 403, 'Client edit attempt AFTER Admin approval is blocked (403 Forbidden)');
+
+    // 5. Admin edits project anytime -> must succeed
+    const adminEditProject = await dispatchRequest('PUT', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${adminToken}` },
+      body: { title: 'Brand Launch Commercial (Admin Final Cut Spec)' }
+    });
+    assert(adminEditProject.status === 200 && adminEditProject.data.project.title.includes('Admin Final Cut Spec'), 'Admin can edit project details anytime (200 OK)');
+
+    // 6. Editor (Kshitiz Singh) logs in and accepts assignment
+    const kshitizLogin = await dispatchRequest('POST', '/api/auth/login', {
+      body: { email: 'kshitizs780@gmail.com', password: 'BADAL_12345' }
+    });
+    assert(kshitizLogin.status === 200, 'Editor Kshitiz Singh logs in successfully');
+    const kshitizToken = kshitizLogin.cookie || kshitizLogin.data.token;
+
+    const editorAccept = await dispatchRequest('POST', `/api/projects/${advProjectId}/accept-assignment`, {
+      headers: { cookie: `token=${kshitizToken}` }
+    });
+    assert(editorAccept.status === 200, 'Editor accepts assignment ("Accept & Start Working")');
+
+    const checkInProgress = await dispatchRequest('GET', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${kshitizToken}` }
+    });
+    assert(checkInProgress.data.project.status === 'In Progress', 'Project status transitioned to "In Progress"');
+
+    // 7. Editor submits cut
+    await dispatchRequest('POST', `/api/projects/${advProjectId}/submit`, {
+      headers: { cookie: `token=${kshitizToken}` },
+      body: { submission_link: 'https://drive.google.com/file/d/brand-cut-v1/view', notes: 'First assembly' }
+    });
+
+    // 8. Admin approves cut & completes delivery
+    await dispatchRequest('POST', `/api/projects/${advProjectId}/review-cut`, {
+      headers: { cookie: `token=${adminToken}` },
+      body: { action: 'APPROVE' }
+    });
+    await dispatchRequest('POST', `/api/projects/${advProjectId}/complete`, {
+      headers: { cookie: `token=${adminToken}` },
+      body: { final_delivery_link: 'https://drive.google.com/drive/folders/brand-deliverables-v1' }
+    });
+
+    // 9. Client receives edit and requests revision
+    const clientRevReq = await dispatchRequest('POST', `/api/projects/${advProjectId}/client-revision`, {
+      headers: { cookie: `token=${clientToken}` },
+      body: { revision_notes: 'Tone down the bass at 1:15 and adjust end logo framing' }
+    });
+    assert(clientRevReq.status === 200, 'Client requests delivery revision with notes');
+
+    const checkRevState = await dispatchRequest('GET', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(checkRevState.data.project.status === 'Revision Required' && checkRevState.data.project.client_revision_notes.includes('Tone down the bass'), 'Project marked "Revision Required" with client feedback');
+
+    // 10. Client approves revision / final delivery
+    const clientApprove = await dispatchRequest('POST', `/api/projects/${advProjectId}/client-approve`, {
+      headers: { cookie: `token=${clientToken}` }
+    });
+    assert(clientApprove.status === 200, 'Client approves delivered video');
+
+    // 11. Client submits final payment with UTR number
+    const clientSubmitUtr = await dispatchRequest('POST', `/api/projects/${advProjectId}/submit-payment`, {
+      headers: { cookie: `token=${clientToken}` },
+      body: {
+        amount: 1000.00,
+        payment_method: 'Bank Wire / IMPS',
+        reference_id: 'UTR-HDFC-99228811',
+        receipt_url: 'https://cdn.receipts.com/utr-99228811.pdf',
+        notes: 'Final balance paid via RTGS/UTR transfer'
+      }
+    });
+    assert(clientSubmitUtr.status === 201 && clientSubmitUtr.data.payment.status === 'PENDING_VERIFICATION', 'Client submits payment with UTR (status: PENDING_VERIFICATION)');
+    const clientPaymentId = clientSubmitUtr.data.payment.id;
+
+    // 12. Admin checks pending verifications & approves client payment
+    const adminFinanceView = await dispatchRequest('GET', '/api/finance/overview', {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(adminFinanceView.status === 200, 'Admin fetches financial overview');
+    assert(adminFinanceView.data.pendingVerifications && adminFinanceView.data.pendingVerifications.some(p => p.id === clientPaymentId), 'Pending UTR payment visible in Admin verification queue');
+
+    const adminApprovePmt = await dispatchRequest('POST', `/api/finance/payments/${clientPaymentId}/approve`, {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(adminApprovePmt.status === 200, 'Admin verifies and approves client UTR payment');
+
+    // 13. Admin records Editor payment with late penalty / deduction
+    const editorPayoutDeduction = await dispatchRequest('POST', '/api/finance/record-payment', {
+      headers: { cookie: `token=${adminToken}` },
+      body: {
+        project_id: advProjectId,
+        type: 'EDITOR_PAYMENT',
+        amount: 600.00,
+        deduction_amount: 100.00,
+        deduction_reason: 'Late delivery penalty by 1 day',
+        currency: 'USD',
+        payment_method: 'Wise / Direct Wire',
+        reference_id: 'WISE-PAY-441199',
+        notes: 'Agreed $700, deducted $100 penalty, paid $600'
+      }
+    });
+    assert(editorPayoutDeduction.status === 201, 'Admin records editor payout with penalty deduction ($600 paid + $100 deducted)');
+
+    // 14. Verify Project editor payment status is marked PAID with deduction breakdown
+    const checkEditorPaidState = await dispatchRequest('GET', `/api/projects/${advProjectId}`, {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    const projDetail = checkEditorPaidState.data.project;
+    assert(projDetail.editor_payment_status === 'PAID', 'Project editor payment status evaluated as PAID');
+    assert(projDetail.editor_deduction_amount === 100.00, 'Editor deduction amount recorded as $100.00');
+
+    // 15. Verify Multi-Period Profit & Loss Hub
+    const finOverview = await dispatchRequest('GET', '/api/finance/overview', {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(finOverview.data.periods !== undefined, 'Financial overview returns multi-period analysis');
+    assert(finOverview.data.periods.day !== undefined, 'Profit/Loss includes Day (1D) interval');
+    assert(finOverview.data.periods.week !== undefined, 'Profit/Loss includes Week (7D) interval');
+    assert(finOverview.data.periods.month !== undefined, 'Profit/Loss includes Month (30D) interval');
+    assert(finOverview.data.periods.year !== undefined, 'Profit/Loss includes Year (1Y) interval');
+    assert(finOverview.data.periods.three_year !== undefined, 'Profit/Loss includes 3 Years (3Y) interval');
+    assert(finOverview.data.periods.all !== undefined, 'Profit/Loss includes All Time interval');
+    assert(finOverview.data.periods.all.USD.net_profit_loss !== undefined, 'Net profit/loss calculated for USD');
+    assert(finOverview.data.periods.all.INR.net_profit_loss !== undefined, 'Net profit/loss calculated for INR');
+
+    // ----------------------------------------------------
     // SUMMARY
     // ----------------------------------------------------
     console.log('\n====================================================');
