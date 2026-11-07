@@ -29,8 +29,58 @@ const App = {
     window.addEventListener('hashchange', () => this.handleRouting());
     this.handleRouting();
 
-    // Setup notifications periodic poll
-    setInterval(() => this.pollNotifications(), 10000);
+    // Global protection: prevent mouse wheel / trackpad scroll from accidentally altering number inputs
+    document.addEventListener('wheel', (e) => {
+      if (e.target && e.target.tagName === 'INPUT' && (e.target.type === 'number' || e.target.inputMode === 'decimal')) {
+        e.target.blur();
+      }
+    }, { passive: true });
+
+    // Global protection for laptop side keys (Numpad with NumLock off) & accidental scrolling on number inputs
+    document.addEventListener('keydown', (e) => {
+      const target = e.target;
+      if (!target || target.tagName !== 'INPUT') return;
+      const isNumInput = target.type === 'number' || 
+                         target.inputMode === 'decimal' || 
+                         (target.id && (target.id.includes('budget') || target.id.includes('price') || target.id.includes('payment') || target.id.includes('rate') || target.id.includes('amount')));
+      if (!isNumInput) return;
+
+      const numpadMap = {
+        Numpad0: '0', Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4',
+        Numpad5: '5', Numpad6: '6', Numpad7: '7', Numpad8: '8', Numpad9: '9',
+        NumpadDecimal: '.'
+      };
+
+      if (numpadMap[e.code] !== undefined) {
+        if (e.key !== numpadMap[e.code]) {
+          // Laptop side key pressed while NumLock is OFF (browser would otherwise scroll or move page)
+          e.preventDefault();
+          const char = numpadMap[e.code];
+          const start = target.selectionStart ?? target.value.length;
+          const end = target.selectionEnd ?? target.value.length;
+          const val = target.value;
+          target.value = val.substring(0, start) + char + val.substring(end);
+          if (typeof target.setSelectionRange === 'function') {
+            target.setSelectionRange(start + 1, start + 1);
+          }
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+      }
+
+      // Block ArrowUp, ArrowDown, PageUp, PageDown from scrolling while focused on number input
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+
+    // Setup periodic polling for notifications & unread chat messages
+    this.pollNotifications();
+    this.pollChatUnread();
+    setInterval(() => {
+      this.pollNotifications();
+      this.pollChatUnread();
+    }, 5000);
   },
 
   // Theme Management (Light & Dark with persistence)
@@ -126,6 +176,7 @@ const App = {
         <a href="#${i.route}" class="nav-item ${this.activeRoute === i.route ? 'active' : ''}" onclick="App.closeMobileSidebar()">
           <i data-lucide="${i.icon}" style="width:18px;height:18px"></i>
           <span>${i.label}</span>
+          ${i.route === 'chat' ? `<span class="chat-nav-badge" id="chat-nav-badge" style="display:none">0</span>` : ''}
         </a>
       `).join('')}
     `;
@@ -143,6 +194,7 @@ const App = {
     }
 
     if (window.lucide) window.lucide.createIcons();
+    this.pollChatUnread();
   },
 
   renderTopbarUser() {
@@ -224,6 +276,33 @@ const App = {
       const badgeEl = document.getElementById('notification-bell-badge');
       if (badgeEl) {
         badgeEl.style.display = State.unreadNotifications > 0 ? 'block' : 'none';
+      }
+    } catch {}
+  },
+
+  async pollChatUnread() {
+    if (!State.currentUser) return;
+    try {
+      const res = await API.get('/chat/unread');
+      if (!res || !res.success) return;
+
+      const unreadMessages = res.unread_messages || 0;
+      const unreadSenders = res.unread_senders || 0;
+
+      const badgeEl = document.getElementById('chat-nav-badge');
+      if (badgeEl) {
+        if (unreadMessages > 0) {
+          badgeEl.style.display = 'inline-flex';
+          const displayCount = unreadSenders > 99 ? '99+' : `${unreadSenders}`;
+          badgeEl.textContent = displayCount;
+          badgeEl.title = `${unreadMessages} unread message${unreadMessages > 1 ? 's' : ''} from ${unreadSenders} person${unreadSenders > 1 ? 's' : ''}`;
+        } else {
+          badgeEl.style.display = 'none';
+        }
+      }
+
+      if (window.ChatView && typeof ChatView.updateTabBadges === 'function') {
+        ChatView.updateTabBadges(res.by_tab);
       }
     } catch {}
   },

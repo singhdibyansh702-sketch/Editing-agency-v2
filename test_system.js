@@ -258,6 +258,25 @@ async function runTests() {
     });
     assert(editorMsgAdmin.status === 201, 'Editor messaging Admin is ALLOWED (201 Created)');
 
+    // Verify Chat Unread Summary Endpoint
+    const adminUnread = await dispatchRequest('GET', '/api/chat/unread', {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(adminUnread.status === 200 && adminUnread.data.unread_messages >= 2, 'Admin unread summary returns accurate message count');
+    assert(adminUnread.data.unread_senders >= 2, 'Admin unread summary tracks distinct senders count');
+    assert(adminUnread.data.by_tab && adminUnread.data.by_tab.clients >= 1 && adminUnread.data.by_tab.editors >= 1, 'Admin unread breakdown segregates clients and editors tabs');
+
+    // Admin opens client conversation to mark messages read
+    const readClientChat = await dispatchRequest('GET', '/api/chat/messages/u-client-001', {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(readClientChat.status === 200, 'Admin fetches and marks client messages as read');
+
+    const adminUnreadAfter = await dispatchRequest('GET', '/api/chat/unread', {
+      headers: { cookie: `token=${adminToken}` }
+    });
+    assert(adminUnreadAfter.status === 200 && adminUnreadAfter.data.by_tab.clients === 0, 'Client unread count resets to 0 after conversation is read');
+
     // ----------------------------------------------------
     // TEST 3: Multi-Currency & Negotiation Workflow
     // ----------------------------------------------------

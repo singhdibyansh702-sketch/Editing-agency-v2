@@ -33,9 +33,11 @@ const ChatView = {
             <div class="chat-tabs">
               <button class="chat-tab ${this.activeTab === 'clients' ? 'active' : ''}" id="tab-clients" onclick="ChatView.switchAdminTab('clients')">
                 <i data-lucide="users" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px"></i> Clients
+                <span class="chat-tab-badge" id="tab-clients-badge" style="display:none">0</span>
               </button>
               <button class="chat-tab ${this.activeTab === 'editors' ? 'active' : ''}" id="tab-editors" onclick="ChatView.switchAdminTab('editors')">
                 <i data-lucide="film" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px"></i> Editors
+                <span class="chat-tab-badge" id="tab-editors-badge" style="display:none">0</span>
               </button>
             </div>
           ` : `
@@ -129,7 +131,7 @@ const ChatView = {
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-weight:600;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</span>
-                ${item.unread_count > 0 ? `<span class="badge badge-progress" style="font-size:0.7rem">${item.unread_count}</span>` : ''}
+                ${item.unread_count > 0 ? `<span class="chat-user-unread-badge">${item.unread_count}</span>` : ''}
               </div>
               <div style="font-size:0.76rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">
                 ${item.last_message || 'Start conversation...'}
@@ -157,7 +159,7 @@ const ChatView = {
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-weight:600;font-size:0.88rem">Agency Support & Admin</span>
-                ${admin.unread_count > 0 ? `<span class="badge badge-progress">${admin.unread_count}</span>` : ''}
+                ${admin.unread_count > 0 ? `<span class="chat-user-unread-badge">${admin.unread_count}</span>` : ''}
               </div>
               <div style="font-size:0.76rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">
                 ${admin.last_message || 'Direct agency communication'}
@@ -169,6 +171,10 @@ const ChatView = {
         if (!this.activeRecipientId) {
           this.selectConversation(admin.id, admin.name, 'ADMIN');
         }
+      }
+
+      if (window.App && App.pollChatUnread) {
+        App.pollChatUnread();
       }
     } catch (err) {
       console.error(err);
@@ -236,8 +242,38 @@ const ChatView = {
       if (scrollToBottom) {
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
+
+      // Refresh global badge since messages in this thread were marked read
+      if (window.App && App.pollChatUnread) {
+        App.pollChatUnread();
+      }
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  updateTabBadges(byTab) {
+    if (!byTab) return;
+    const clientsBadge = document.getElementById('tab-clients-badge');
+    if (clientsBadge) {
+      if (byTab.clients > 0) {
+        clientsBadge.style.display = 'inline-flex';
+        clientsBadge.textContent = byTab.clients_senders > 1 ? `${byTab.clients_senders}` : `${byTab.clients}`;
+        clientsBadge.title = `${byTab.clients} unread from ${byTab.clients_senders} client${byTab.clients_senders > 1 ? 's' : ''}`;
+      } else {
+        clientsBadge.style.display = 'none';
+      }
+    }
+
+    const editorsBadge = document.getElementById('tab-editors-badge');
+    if (editorsBadge) {
+      if (byTab.editors > 0) {
+        editorsBadge.style.display = 'inline-flex';
+        editorsBadge.textContent = byTab.editors_senders > 1 ? `${byTab.editors_senders}` : `${byTab.editors}`;
+        editorsBadge.title = `${byTab.editors} unread from ${byTab.editors_senders} editor${byTab.editors_senders > 1 ? 's' : ''}`;
+      } else {
+        editorsBadge.style.display = 'none';
+      }
     }
   },
 
@@ -255,6 +291,10 @@ const ChatView = {
 
       input.value = '';
       await this.loadMessages(this.activeRecipientId, true);
+
+      if (window.App && App.pollChatUnread) {
+        App.pollChatUnread();
+      }
     } catch (err) {
       console.error(err);
     }

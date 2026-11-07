@@ -246,7 +246,7 @@ const ClientPortal = {
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Proposed Budget (<span id="req-curr-symbol">$</span>) *</label>
               <div style="position:relative">
-                <input type="number" step="0.01" id="req-budget" class="form-control" placeholder="e.g. 600 or 25000" required oninput="ClientPortal.updateBudgetPreview()">
+                <input type="text" inputmode="decimal" id="req-budget" class="form-control" placeholder="e.g. 600 or 25000" autocomplete="off" spellcheck="false" required oninput="ClientPortal.onBudgetInput(this)" onkeydown="ClientPortal.onBudgetKeyDown(event)">
               </div>
               <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:6px;display:flex;justify-content:space-between">
                 <span>Formatted Preview: <strong id="req-budget-preview">$0.00</strong></span>
@@ -292,8 +292,47 @@ const ClientPortal = {
     this.updateBudgetPreview();
   },
 
+  onBudgetInput(input) {
+    if (!input) return;
+    // Strip everything except numbers and decimal point
+    let val = input.value.replace(/[^0-9.]/g, '');
+    const parts = val.split('.');
+    if (parts.length > 2) {
+      val = parts[0] + '.' + parts.slice(1).join('');
+    }
+    input.value = val;
+    this.updateBudgetPreview();
+  },
+
+  onBudgetKeyDown(e) {
+    const numpadMap = {
+      Numpad0: '0', Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4',
+      Numpad5: '5', Numpad6: '6', Numpad7: '7', Numpad8: '8', Numpad9: '9',
+      NumpadDecimal: '.'
+    };
+    if (numpadMap[e.code] !== undefined && e.key !== numpadMap[e.code]) {
+      e.preventDefault();
+      const input = e.target;
+      const char = numpadMap[e.code];
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? input.value.length;
+      input.value = input.value.substring(0, start) + char + input.value.substring(end);
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(start + 1, start + 1);
+      }
+      this.onBudgetInput(input);
+      return;
+    }
+    // Prevent ArrowUp / ArrowDown / PageUp / PageDown from scrolling or altering values like a spinner
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(e.key)) {
+      e.preventDefault();
+    }
+  },
+
   updateBudgetPreview() {
-    const val = parseFloat(document.getElementById('req-budget')?.value || 0);
+    const raw = document.getElementById('req-budget')?.value || '0';
+    const clean = String(raw).replace(/[^0-9.]/g, '');
+    const val = parseFloat(clean) || 0;
     const previewEl = document.getElementById('req-budget-preview');
     if (previewEl) {
       previewEl.textContent = State.formatCurrency(val, this.selectedCurrency);
@@ -306,7 +345,8 @@ const ClientPortal = {
       const video_type = document.getElementById('req-type')?.value;
       const deadline = document.getElementById('req-deadline')?.value;
       const currency = this.selectedCurrency;
-      const client_budget = parseFloat(document.getElementById('req-budget')?.value || 0);
+      const rawBudget = document.getElementById('req-budget')?.value || '0';
+      const client_budget = parseFloat(String(rawBudget).replace(/[^0-9.]/g, '')) || 0;
       const reference_link = document.getElementById('req-footage')?.value;
       const spec_doc_url = document.getElementById('req-spec')?.value;
       const editing_requirements = document.getElementById('req-instructions')?.value;

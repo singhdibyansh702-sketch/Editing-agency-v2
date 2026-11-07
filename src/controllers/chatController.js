@@ -251,9 +251,65 @@ async function sendMessage(req, res, next) {
   }
 }
 
+// ==========================================
+// UNREAD MESSAGES SUMMARY & SENDER COUNT
+// ==========================================
+
+async function getUnreadSummary(req, res, next) {
+  try {
+    const user = req.user;
+
+    const [rows] = await db.query(
+      `SELECT 
+         COUNT(*) as total_unread_messages,
+         COUNT(DISTINCT sender_id) as total_unread_senders
+       FROM direct_messages
+       WHERE receiver_id = ? AND is_read = 0`,
+      [user.id]
+    );
+
+    const totalMessages = rows && rows[0] ? (rows[0].total_unread_messages || rows[0]['COUNT(*)'] || 0) : 0;
+    const totalSenders = rows && rows[0] ? (rows[0].total_unread_senders || rows[0]['COUNT(DISTINCT sender_id)'] || 0) : 0;
+
+    let byTab = null;
+    if (user.role === 'ADMIN') {
+      const [clientRows] = await db.query(`
+        SELECT COUNT(*) as count, COUNT(DISTINCT dm.sender_id) as senders
+        FROM direct_messages dm
+        JOIN users u ON dm.sender_id = u.id
+        WHERE dm.receiver_id = ? AND dm.is_read = 0 AND u.role = 'CLIENT'
+      `, [user.id]);
+
+      const [editorRows] = await db.query(`
+        SELECT COUNT(*) as count, COUNT(DISTINCT dm.sender_id) as senders
+        FROM direct_messages dm
+        JOIN users u ON dm.sender_id = u.id
+        WHERE dm.receiver_id = ? AND dm.is_read = 0 AND u.role = 'EDITOR'
+      `, [user.id]);
+
+      byTab = {
+        clients: clientRows[0] ? (clientRows[0].count || 0) : 0,
+        clients_senders: clientRows[0] ? (clientRows[0].senders || 0) : 0,
+        editors: editorRows[0] ? (editorRows[0].count || 0) : 0,
+        editors_senders: editorRows[0] ? (editorRows[0].senders || 0) : 0
+      };
+    }
+
+    res.json({
+      success: true,
+      unread_messages: totalMessages,
+      unread_senders: totalSenders,
+      by_tab: byTab
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getConversations,
   getMessages,
-  sendMessage
+  sendMessage,
+  getUnreadSummary
 };
 

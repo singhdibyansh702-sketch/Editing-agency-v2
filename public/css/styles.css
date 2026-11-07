@@ -226,14 +226,59 @@ button {
   color: var(--accent-primary);
 }
 
-.nav-item .nav-badge {
+.nav-item .nav-badge,
+.chat-nav-badge {
   margin-left: auto;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
   border-radius: 9999px;
-  background-color: var(--accent-primary);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: pulse-chat-badge 2s infinite ease-in-out;
+}
+
+@keyframes pulse-chat-badge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.chat-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background-color: var(--accent-danger);
+  border-radius: 9999px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.chat-user-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--accent-primary);
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
 }
 
 .sidebar-footer {
@@ -697,6 +742,18 @@ button {
 .form-control:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Remove browser default spinner buttons and drag scrubbing on number inputs */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }
 
 textarea.form-control {
