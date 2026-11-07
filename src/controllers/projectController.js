@@ -420,7 +420,7 @@ async function reviewAndQuoteProject(req, res, next) {
     const currentProject = existing[0];
     const assignedEditorId = editor_id !== undefined ? (editor_id || null) : currentProject.editor_id;
     let newStatus = status;
-    if (!newStatus) {
+    if (!newStatus || newStatus === 'In Progress' || currentProject.status === 'Pending Approval') {
       if (assignedEditorId) {
         newStatus = 'Waiting for Editor';
       } else {
@@ -1144,7 +1144,7 @@ async function clientApproveDelivery(req, res, next) {
     await db.query(
       `UPDATE projects SET
         client_approved_at = CURRENT_TIMESTAMP,
-        status = 'Approved',
+        status = 'Completed',
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [id]

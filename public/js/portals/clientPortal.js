@@ -43,9 +43,10 @@ const ClientPortal = {
       const res = await API.get('/projects');
       const projects = res.projects || [];
 
-      const active = projects.filter(p => !['Completed', 'Cancelled', 'Pending Approval'].includes(p.status)).length;
+      const isProjectCompleted = p => p.status === 'Completed' || p.status === 'Approved' || !!p.client_approved_at;
+      const active = projects.filter(p => !isProjectCompleted(p) && !['Cancelled', 'Pending Approval'].includes(p.status)).length;
       const pendingQuotes = projects.filter(p => p.status === 'Pending Approval').length;
-      const completed = projects.filter(p => p.status === 'Completed').length;
+      const completed = projects.filter(isProjectCompleted).length;
 
       const statsGrid = document.getElementById('client-stats-grid');
       if (statsGrid) {
@@ -165,7 +166,31 @@ const ClientPortal = {
               ` : ''}
 
               <!-- Delivery Review & Client Approval Flow (Requirement 3) -->
-              ${(p.status === 'Completed' || p.status === 'Approved' || p.final_delivery_link) ? `
+              ${(p.client_approved_at || p.status === 'Completed' || p.status === 'Approved') ? `
+                <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);border-radius:var(--radius-lg);padding:18px 22px;margin-bottom:16px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+                    <div style="display:flex;align-items:center;gap:12px">
+                      <div style="background:#10b981;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i data-lucide="check-circle" style="width:20px;height:20px"></i>
+                      </div>
+                      <div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <strong style="color:var(--accent-success);font-size:1.1rem">Completed Master Video Delivery</strong>
+                          <span class="badge badge-success" style="font-size:0.75rem">Ready for Broadcast</span>
+                        </div>
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:2px">
+                          Approved by you on ${State.formatDate(p.client_approved_at || p.updated_at)}. Your video production has been finalized.
+                        </div>
+                      </div>
+                    </div>
+                    ${p.final_delivery_link ? `
+                      <a href="${p.final_delivery_link}" target="_blank" class="btn btn-success" style="font-weight:700;padding:9px 20px;display:inline-flex;align-items:center;gap:8px">
+                        <i data-lucide="download" style="width:16px;height:16px"></i> Download Final Master
+                      </a>
+                    ` : '<span style="font-size:0.85rem;color:var(--text-muted)">Master link finalizing...</span>'}
+                  </div>
+                </div>
+              ` : (p.final_delivery_link) ? `
                 <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px">
                     <div>
@@ -185,26 +210,15 @@ const ClientPortal = {
                   </div>
 
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding-top:10px;border-top:1px solid rgba(16,185,129,0.2)">
-                    <div>
-                      ${p.client_approved_at ? `
-                        <span class="badge badge-approved" style="font-size:0.8rem">
-                          <i data-lucide="check-circle" style="width:12px;height:12px;display:inline"></i> Approved by You on ${State.formatDate(p.client_approved_at)}
-                        </span>
-                      ` : `
-                        <span style="font-size:0.82rem;color:var(--text-muted)">Please review before approving payment.</span>
-                      `}
+                    <span style="font-size:0.82rem;color:var(--text-muted)">Please review before approving payment.</span>
+                    <div style="display:flex;gap:8px">
+                      <button class="btn btn-sm btn-outline" style="color:var(--accent-danger);border-color:rgba(239,68,68,0.3)" onclick="ClientPortal.openRevisionModal('${p.id}')">
+                        <i data-lucide="rotate-ccw" style="width:14px;height:14px"></i> Request Revision
+                      </button>
+                      <button class="btn btn-sm btn-success" onclick="ClientPortal.approveDelivery('${p.id}')">
+                        <i data-lucide="check" style="width:14px;height:14px"></i> Approve Delivery
+                      </button>
                     </div>
-
-                    ${!p.client_approved_at ? `
-                      <div style="display:flex;gap:8px">
-                        <button class="btn btn-sm btn-outline" style="color:var(--accent-danger);border-color:rgba(239,68,68,0.3)" onclick="ClientPortal.openRevisionModal('${p.id}')">
-                          <i data-lucide="rotate-ccw" style="width:14px;height:14px"></i> Request Revision
-                        </button>
-                        <button class="btn btn-sm btn-success" onclick="ClientPortal.approveDelivery('${p.id}')">
-                          <i data-lucide="check" style="width:14px;height:14px"></i> Approve Delivery
-                        </button>
-                      </div>
-                    ` : ''}
                   </div>
                 </div>
               ` : ''}

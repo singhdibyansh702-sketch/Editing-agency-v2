@@ -158,21 +158,29 @@ const EditorPortal = {
                   <div style="display:flex;align-items:center;gap:10px">
                     <i data-lucide="bell" style="color:var(--accent-primary);width:22px;height:22px;flex-shrink:0"></i>
                     <div>
-                      <div style="font-weight:700;font-size:0.95rem;color:var(--text-primary)">New Project Assignment Waiting for Your Acceptance</div>
-                      <div style="font-size:0.82rem;color:var(--text-secondary)">Review raw assets, deadline, and agreed payout. Click below to accept the assignment and begin editing.</div>
+                      <div style="font-weight:700;font-size:0.95rem;color:var(--text-primary)">New Project Assignment: Review Specs Before Starting</div>
+                      <div style="font-size:0.82rem;color:var(--text-secondary)">Inspect footage drive, instructions, and deadline. Click below to view full details and accept when ready to edit.</div>
                     </div>
                   </div>
-                  <button class="btn btn-sm btn-success" style="background:#10b981;color:#fff;font-weight:700;padding:8px 18px" onclick="EditorPortal.acceptProject('${p.id}')">
-                    <i data-lucide="play" style="width:16px;height:16px"></i> Accept & Start Working
-                  </button>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn btn-sm btn-outline" onclick="EditorPortal.openProjectDetailsModal('${p.id}')">
+                      <i data-lucide="eye" style="width:14px;height:14px"></i> View Details
+                    </button>
+                    <button class="btn btn-sm btn-success" style="background:#10b981;color:#fff;font-weight:700;padding:8px 18px" onclick="EditorPortal.acceptProject('${p.id}')">
+                      <i data-lucide="play" style="width:16px;height:16px"></i> Accept & Start Working
+                    </button>
+                  </div>
                 </div>
               ` : ''}
 
-              ${p.status === 'Revision Required' ? `
-                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
-                  <i data-lucide="alert-triangle" style="color:var(--accent-danger);width:20px;height:20px;flex-shrink:0"></i>
-                  <div style="font-size:0.88rem;color:var(--text-primary)">
-                    <strong>Action Required:</strong> Admin has requested revisions on this cut. Please inspect instructions and submit a revised cut.
+              ${(p.status === 'Revision Required' || p.client_revision_notes) ? `
+                <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <i data-lucide="alert-triangle" style="color:var(--accent-danger);width:18px;height:18px;flex-shrink:0"></i>
+                    <strong style="color:var(--accent-danger);font-size:0.95rem">Client Revision Request Message:</strong>
+                  </div>
+                  <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:12px 16px;border-left:4px solid var(--accent-danger);font-size:0.92rem;color:var(--text-primary);line-height:1.5">
+                    "${p.client_revision_notes || 'Client requested revisions on this cut. Please inspect instructions and submit a revised cut.'}"
                   </div>
                 </div>
               ` : ''}
@@ -208,14 +216,25 @@ const EditorPortal = {
 
               <!-- Actions Bar -->
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-                <button class="btn btn-sm btn-outline" onclick="EditorPortal.inspectFootage('${p.reference_link || ''}')">
-                  <i data-lucide="activity" style="width:14px;height:14px"></i> Technical Video Inspector
-                </button>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-sm btn-outline" onclick="EditorPortal.openProjectDetailsModal('${p.id}')">
+                    <i data-lucide="eye" style="width:14px;height:14px"></i> View Details
+                  </button>
+                  <button class="btn btn-sm btn-outline" onclick="EditorPortal.inspectFootage('${p.reference_link || ''}')">
+                    <i data-lucide="activity" style="width:14px;height:14px"></i> Technical Video Inspector
+                  </button>
+                </div>
 
                 <div style="display:flex;gap:10px">
-                  <button class="btn btn-sm btn-primary" onclick="EditorPortal.openSubmitCutModal('${p.id}', '${p.project_code}')">
-                    <i data-lucide="upload" style="width:14px;height:14px"></i> Submit Cut for Review
-                  </button>
+                  ${p.status === 'Waiting for Editor' ? `
+                    <button class="btn btn-sm btn-success" style="background:#10b981;color:#fff;font-weight:700" onclick="EditorPortal.acceptProject('${p.id}')">
+                      <i data-lucide="play" style="width:14px;height:14px"></i> Accept & Start Working
+                    </button>
+                  ` : `
+                    <button class="btn btn-sm btn-primary" onclick="EditorPortal.openSubmitCutModal('${p.id}', '${p.project_code}')">
+                      <i data-lucide="upload" style="width:14px;height:14px"></i> Submit Cut for Review
+                    </button>
+                  `}
                   <a href="#chat" class="btn btn-sm btn-secondary">
                     <i data-lucide="message-square" style="width:14px;height:14px"></i> Chat with Admin
                   </a>
@@ -277,6 +296,150 @@ const EditorPortal = {
       this.loadOverviewData();
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  async openProjectDetailsModal(projectId) {
+    try {
+      const res = await API.get(`/projects/${projectId}`);
+      const p = res.project;
+      const submissions = res.submissions || [];
+
+      Modal.open({
+        title: `${p.project_code}: ${p.title}`,
+        size: 'lg',
+        bodyHtml: `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <div>
+              <span style="font-size:0.85rem;color:var(--text-muted)">Video Type:</span> <strong>${p.video_type}</strong> | 
+              <span style="font-size:0.85rem;color:var(--text-muted)">Confirmed Deadline:</span> <strong>${State.formatDate(p.deadline)}</strong>
+            </div>
+            <div>${State.getStatusBadge(p.status)}</div>
+          </div>
+
+          ${p.status === 'Waiting for Editor' ? `
+            <div style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div>
+                <strong style="color:var(--accent-primary)">Project Awaiting Your Acceptance</strong>
+                <div style="font-size:0.83rem;color:var(--text-secondary);margin-top:2px">
+                  Review the brief, footage drive, and instructions below. When ready to begin editing, click "Accept & Start Working".
+                </div>
+              </div>
+              <button class="btn btn-success" style="background:#10b981;color:#fff;font-weight:700" onclick="EditorPortal.acceptProject('${p.id}'); Modal.close();">
+                <i data-lucide="play" style="width:14px;height:14px"></i> Accept & Start Working
+              </button>
+            </div>
+          ` : ''}
+
+          ${(p.status === 'Revision Required' || p.client_revision_notes) ? `
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:16px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <i data-lucide="alert-triangle" style="color:var(--accent-danger);width:18px;height:18px"></i>
+                <strong style="color:var(--accent-danger);font-size:0.95rem">Client Revision Request Message:</strong>
+              </div>
+              <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:12px 16px;border-left:4px solid var(--accent-danger);font-size:0.92rem;color:var(--text-primary);line-height:1.5">
+                "${p.client_revision_notes || 'Client requested revisions on this cut. Please inspect instructions and submit a revised cut.'}"
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Payout & Contract -->
+          <div style="padding:14px;background:var(--bg-tertiary);border-radius:var(--radius-lg);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700">Agreed Editor Payout</div>
+              <div style="font-size:1.35rem;font-weight:800;color:var(--accent-success);margin-top:2px">
+                ${State.formatCurrency(p.editor_payment, p.currency)}
+              </div>
+            </div>
+            <div style="text-align:right">
+              ${p.editor_deduction_amount > 0 ? `
+                <div style="font-size:0.8rem;color:var(--accent-danger);font-weight:600">
+                  Deduction: -${State.formatCurrency(p.editor_deduction_amount, p.currency)} (${p.deduction_reason || 'Penalty/Late'})
+                </div>
+                <div style="font-size:0.85rem;color:#10b981;font-weight:700;margin-top:2px">
+                  Net Paid: ${State.formatCurrency(p.editor_paid_amount, p.currency)} [PAID]
+                </div>
+              ` : `
+                <div style="font-size:0.85rem;font-weight:700;color:${p.editor_payment_status === 'PAID' ? 'var(--accent-success)' : 'var(--text-muted)'}">
+                  Payout Status: ${p.editor_payment_status || 'UNPAID'}
+                </div>
+              `}
+            </div>
+          </div>
+
+          <!-- Raw Assets & Instructions -->
+          <div style="margin-bottom:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="padding:12px 16px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md)">
+              <strong style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase">Raw Footage Assets:</strong>
+              ${p.reference_link ? `
+                <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <a href="${p.reference_link}" target="_blank" class="btn btn-sm btn-outline" style="background:var(--bg-tertiary)">
+                    <i data-lucide="folder" style="width:14px;height:14px"></i> Open Raw Footage Drive
+                  </a>
+                  <button class="btn btn-sm btn-outline" onclick="EditorPortal.inspectFootage('${p.reference_link}'); Modal.close();">
+                    <i data-lucide="activity" style="width:14px;height:14px"></i> Inspect in Technical Viewer
+                  </button>
+                </div>
+              ` : '<div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">No footage drive attached</div>'}
+            </div>
+
+            ${p.spec_doc_url ? `
+              <div style="padding:12px 16px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md)">
+                <strong style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase">Brief & Spec Document:</strong>
+                <div style="margin-top:6px">
+                  <a href="${p.spec_doc_url}" target="_blank" style="font-size:0.85rem;color:var(--accent-primary);text-decoration:underline">
+                    ${p.spec_doc_url}
+                  </a>
+                </div>
+              </div>
+            ` : ''}
+
+            <div style="padding:14px 16px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md)">
+              <strong style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase">Editing Requirements & Instructions:</strong>
+              <div style="margin-top:6px;font-size:0.9rem;line-height:1.5;color:var(--text-primary)">
+                ${p.editing_requirements || p.description || 'Follow standard agency grading and loudness parameters (-14 LUFS).'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Cut Submissions -->
+          <div style="margin-top:16px">
+            <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:8px">Your Cut Submissions (${submissions.length})</h4>
+            ${submissions.length === 0 ? `<p style="font-size:0.85rem;color:var(--text-muted)">No cuts submitted yet.</p>` : `
+              <div style="display:flex;flex-direction:column;gap:8px">
+                ${submissions.map(s => `
+                  <div style="padding:10px 14px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                      <strong>Version ${s.version}</strong> - <span style="font-size:0.8rem;color:var(--text-muted)">${State.formatDateTime(s.created_at)}</span>
+                      <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:2px">${s.notes || 'No submission note'}</div>
+                    </div>
+                    <div>
+                      <a href="${s.submission_link}" target="_blank" class="btn btn-sm btn-outline">Preview Cut</a>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+          ${p.status === 'Waiting for Editor' ? `
+            <button class="btn btn-success" style="background:#10b981;color:#fff;font-weight:700" onclick="EditorPortal.acceptProject('${p.id}'); Modal.close();">
+              <i data-lucide="play" style="width:14px;height:14px"></i> Accept & Start Working
+            </button>
+          ` : `
+            <button class="btn btn-primary" onclick="Modal.close(); EditorPortal.openSubmitCutModal('${p.id}', '${p.project_code}')">
+              <i data-lucide="upload" style="width:14px;height:14px"></i> Submit Cut
+            </button>
+          `}
+        `
+      });
+
+      if (window.lucide) window.lucide.createIcons();
+    } catch (err) {
+      console.error(err);
+      Toast.error('Failed to load project details.');
     }
   },
 

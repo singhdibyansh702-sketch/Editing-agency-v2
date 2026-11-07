@@ -306,6 +306,11 @@ const AdminPortal = {
                       <td>
                         <div style="font-weight:600">${p.title}</div>
                         <div style="font-size:0.75rem;color:var(--text-muted)">${p.video_type}</div>
+                        ${p.client_revision_notes ? `
+                          <div style="margin-top:4px;padding:2px 6px;background:rgba(239,68,68,0.12);border-radius:var(--radius-sm);border-left:2px solid var(--accent-danger);font-size:0.72rem;color:var(--accent-danger)">
+                            <strong>Revision:</strong> "${p.client_revision_notes}"
+                          </div>
+                        ` : ''}
                       </td>
                       <td>${p.client_name || '—'}</td>
                       <td>
@@ -443,6 +448,11 @@ const AdminPortal = {
                     <td>
                       <div style="font-weight:600">${p.title}</div>
                       <div style="font-size:0.75rem;color:var(--text-muted)">${p.video_type}</div>
+                      ${p.client_revision_notes ? `
+                        <div style="margin-top:4px;padding:3px 8px;background:rgba(239,68,68,0.12);border-radius:var(--radius-sm);border-left:2px solid var(--accent-danger);font-size:0.74rem;color:var(--accent-danger)">
+                          <strong>Revision note:</strong> "${p.client_revision_notes}"
+                        </div>
+                      ` : ''}
                     </td>
                     <td>
                       <div>${p.client_name || '—'}</div>
@@ -1028,10 +1038,10 @@ const AdminPortal = {
         editor_payment,
         deadline,
         admin_quote_note,
-        status: 'In Progress'
+        status: 'Waiting for Editor'
       });
 
-      Toast.success('Quote confirmed, editor assigned, and notifications dispatched!');
+      Toast.success('Quote confirmed! Project is now waiting for assigned editor to accept.');
       Modal.close();
       this.fetchAndRenderProjectsTable();
     } catch (err) {
@@ -1357,6 +1367,25 @@ const AdminPortal = {
               </div>
             </div>
           </div>
+
+          ${p.client_revision_notes ? `
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <i data-lucide="alert-triangle" style="color:var(--accent-danger);width:18px;height:18px"></i>
+                <strong style="color:var(--accent-danger);font-size:0.95rem">Client Revision Request Message:</strong>
+              </div>
+              <div style="background:var(--bg-card);padding:10px 14px;border-radius:var(--radius-sm);border-left:3px solid var(--accent-danger);font-size:0.92rem;color:var(--text-primary);line-height:1.5">
+                "${p.client_revision_notes}"
+              </div>
+            </div>
+          ` : ''}
+
+          ${p.editing_requirements ? `
+            <div style="padding:12px 16px;background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:14px">
+              <strong style="font-size:0.8rem;text-transform:uppercase;color:var(--text-muted)">Client Editing Instructions:</strong>
+              <div style="margin-top:4px;font-size:0.9rem;color:var(--text-primary);line-height:1.5">${p.editing_requirements}</div>
+            </div>
+          ` : ''}
 
           ${p.reference_link ? `
             <div style="margin-bottom:10px;font-size:0.88rem">
